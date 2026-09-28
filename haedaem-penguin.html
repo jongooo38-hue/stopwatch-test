@@ -158,10 +158,10 @@ scene.background = new THREE.Color(0x87CEEB);
 scene.fog = new THREE.Fog(0xB8E8F8, 30, 80);
 
 // ---- Camera ----
-const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
-// 카메라는 펭귄 뒤 + 약간 위에서 내려다봄 (원본과 동일한 시점)
-camera.position.set(0, 4.5, 8);
-camera.lookAt(0, 0, -10);
+const camera = new THREE.PerspectiveCamera(65, 1, 0.1, 200);
+// 원본: 더 낮은 시점, 펭귄 더 크게, 통로가 화면 아래쪽 많이 차지
+camera.position.set(0, 3.5, 6);
+camera.lookAt(0, 1, -12);
 
 // ---- Resize ----
 function resize() {
@@ -197,53 +197,81 @@ rimLight.position.set(-5, 10, -20);
 scene.add(rimLight);
 
 // ---- Materials ----
-const matSnowRoad = new THREE.MeshLambertMaterial({ color: 0xE8F4FF }); // 밝은 눈 통로
-const matSnowBank = new THREE.MeshLambertMaterial({ color: 0xFFFFFF }); // 눈 언덕
-const matIce = new THREE.MeshLambertMaterial({ color: 0xA8D8FF, transparent: true, opacity: 0.9 });
-const matPenguinBody = new THREE.MeshLambertMaterial({ color: 0x2244BB }); // 파란 몸
-const matPenguinBelly = new THREE.MeshLambertMaterial({ color: 0xFFFFFF }); // 흰 배
-const matPenguinBeak = new THREE.MeshLambertMaterial({ color: 0xFF8800 }); // 주황 부리
-const matPenguinFeet = new THREE.MeshLambertMaterial({ color: 0xFF8800 }); // 주황 발
-const matPenguinEye = new THREE.MeshLambertMaterial({ color: 0x000000 });
+// 원본: 통로는 밝은 시안(cyan-white), 눈 언덕은 순백
+const matSnowRoad = new THREE.MeshLambertMaterial({ color: 0xC8F0FF }); // 시안빛 눈 통로
+const matSnowBank = new THREE.MeshLambertMaterial({ color: 0xF0FAFF }); // 흰 눈 언덕
+const matIce = new THREE.MeshPhongMaterial({ color: 0x88CCFF, transparent: true, opacity: 0.85, shininess: 120 });
+const matPenguinBody = new THREE.MeshPhongMaterial({ color: 0x1133AA, shininess: 60 }); // 진한 파란 몸
+const matPenguinBelly = new THREE.MeshPhongMaterial({ color: 0xFFFFFF, shininess: 30 }); // 흰 배
+const matPenguinBeak = new THREE.MeshPhongMaterial({ color: 0xFF7700, shininess: 40 }); // 주황 부리
+const matPenguinFeet = new THREE.MeshPhongMaterial({ color: 0xFF7700, shininess: 40 }); // 주황 발
+const matPenguinEye = new THREE.MeshPhongMaterial({ color: 0x000000 });
 
 // ---- Road ----
-// 눈 통로: Z=-100 ~ Z=10, 폭 ROAD_W
-const ROAD_W = 6;
-const ROAD_LENGTH = 120;
+const ROAD_W = 7; // 원본보다 넓게
+const ROAD_LENGTH = 150;
 
-const roadGeo = new THREE.PlaneGeometry(ROAD_W, ROAD_LENGTH);
+const roadGeo = new THREE.PlaneGeometry(ROAD_W, ROAD_LENGTH, 1, 20);
 const road = new THREE.Mesh(roadGeo, matSnowRoad);
 road.rotation.x = -Math.PI / 2;
 road.position.set(0, 0, -ROAD_LENGTH/2 + 10);
 road.receiveShadow = true;
 scene.add(road);
 
-// 도로 중앙 빛 반사 (원본의 중앙 하얀 빛 줄기)
-const centerGlowGeo = new THREE.PlaneGeometry(1.2, ROAD_LENGTH);
+// 도로 중앙 빛 반사 (원본의 중앙 하얀 빛 줄기 — 더 밝고 넓게)
+const centerGlowGeo = new THREE.PlaneGeometry(2.0, ROAD_LENGTH);
 const centerGlowMat = new THREE.MeshBasicMaterial({
-  color: 0xFFFFFF, transparent: true, opacity: 0.35, depthWrite: false
+  color: 0xFFFFFF, transparent: true, opacity: 0.5, depthWrite: false
 });
 const centerGlow = new THREE.Mesh(centerGlowGeo, centerGlowMat);
 centerGlow.rotation.x = -Math.PI / 2;
 centerGlow.position.set(0, 0.01, -ROAD_LENGTH/2 + 10);
 scene.add(centerGlow);
 
+// 도로 엣지 라인 (양쪽 경계선)
+for (const side of [-1, 1]) {
+  const edgeGeo = new THREE.PlaneGeometry(0.15, ROAD_LENGTH);
+  const edgeMat = new THREE.MeshBasicMaterial({ color: 0xAADDFF, transparent: true, opacity: 0.6 });
+  const edge = new THREE.Mesh(edgeGeo, edgeMat);
+  edge.rotation.x = -Math.PI / 2;
+  edge.position.set(side * ROAD_W/2, 0.02, -ROAD_LENGTH/2 + 10);
+  scene.add(edge);
+}
+
 // ---- Snow Banks (양쪽 눈 언덕) ----
+// 원본: 큰 눈 더미가 통로 바로 옆에 붙어서 벽처럼
 function makeSnowBank(side) {
-  // 물결 모양 눈 언덕
   const group = new THREE.Group();
-  for (let i = 0; i < 20; i++) {
-    const r = 1.5 + Math.random() * 1.5;
-    const geo = new THREE.SphereGeometry(r, 8, 6);
+  for (let i = 0; i < 30; i++) {
+    // 크기 다양하게 — 큰 것과 작은 것 섞기
+    const r = 2.0 + Math.random() * 2.5;
+    const geo = new THREE.SphereGeometry(r, 10, 7);
+    // Y 압축으로 납작하게 (눈 더미처럼)
+    geo.scale(1, 0.7, 1);
     const mesh = new THREE.Mesh(geo, matSnowBank);
+    const xOffset = ROAD_W/2 + r * 0.5 + Math.random() * 2.0;
     mesh.position.set(
-      side * (ROAD_W/2 + r * 0.6 + Math.random() * 1.5),
-      r * 0.3 - 0.5,
-      -i * 6 - Math.random() * 3
+      side * xOffset,
+      r * 0.2 - 0.3,
+      -i * 5 - Math.random() * 4
     );
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     group.add(mesh);
+
+    // 작은 눈 덩어리 겹쳐서 자연스럽게
+    if (Math.random() > 0.4) {
+      const r2 = r * 0.6;
+      const geo2 = new THREE.SphereGeometry(r2, 8, 6);
+      geo2.scale(1, 0.7, 1);
+      const mesh2 = new THREE.Mesh(geo2, matSnowBank);
+      mesh2.position.set(
+        side * (xOffset + (Math.random()-0.5)*2),
+        r2 * 0.5,
+        -i * 5 - Math.random() * 4 - 2
+      );
+      group.add(mesh2);
+    }
   }
   return group;
 }
@@ -254,26 +282,41 @@ scene.add(leftBanks);
 scene.add(rightBanks);
 
 // ---- Ice Pillars (배경 얼음 기둥) ----
+// 원본: 통로 끝 지평선 바로 뒤에 거대한 얼음 기둥들
 function makeIcePillars() {
   const group = new THREE.Group();
+  // 가운데 쪽 기둥 (통로 끝에 솟음)
   const positions = [
-    [-8, -20], [8, -20], [-12, -35], [12, -35],
-    [-6, -50], [6, -50], [-14, -65], [14, -65],
-    [-9, -80], [9, -80],
+    [-5, -25, 14], [5, -25, 12],      // 앞쪽 가까운 기둥
+    [-10, -40, 18], [10, -40, 16],
+    [-3, -30, 20], [3, -30, 22],       // 중앙 큰 기둥들
+    [-15, -55, 12], [15, -55, 14],
+    [-7, -70, 16], [7, -70, 14],
+    [-20, -85, 10], [20, -85, 12],
   ];
-  for (const [x, z] of positions) {
-    const h = 8 + Math.random() * 10;
-    const geo = new THREE.CylinderGeometry(0.8, 1.5, h, 6);
+  for (const [x, z, h] of positions) {
+    // 기둥 본체
+    const geo = new THREE.CylinderGeometry(1.2, 2.0, h, 6);
     const mesh = new THREE.Mesh(geo, matIce);
     mesh.position.set(x, h/2, z);
     mesh.castShadow = true;
     group.add(mesh);
 
-    // 얼음 기둥 위 뾰족 끝
-    const capGeo = new THREE.ConeGeometry(0.8, 3, 6);
-    const capMesh = new THREE.Mesh(capGeo, matIce);
-    capMesh.position.set(x, h + 1.5, z);
-    group.add(capMesh);
+    // 위 뾰족 끝 (복수)
+    for (let c = 0; c < 2; c++) {
+      const capH = 3 + Math.random() * 4;
+      const capGeo = new THREE.ConeGeometry(0.9 - c*0.3, capH, 6);
+      const capMesh = new THREE.Mesh(capGeo, matIce);
+      capMesh.position.set(x + c*0.8, h + capH/2, z);
+      group.add(capMesh);
+    }
+
+    // 기둥 아래 눈 더미
+    const snowGeo = new THREE.SphereGeometry(2.2, 8, 6);
+    snowGeo.scale(1, 0.5, 1);
+    const snowMesh = new THREE.Mesh(snowGeo, matSnowBank);
+    snowMesh.position.set(x, 0.3, z);
+    group.add(snowMesh);
   }
   return group;
 }
@@ -282,12 +325,22 @@ const icePillars = makeIcePillars();
 scene.add(icePillars);
 
 // ---- 하늘 / 구름 배경 ----
-// 스카이돔
-const skyGeo = new THREE.SphereGeometry(150, 16, 8);
+// 위는 진한 하늘, 아래로 갈수록 밝은 시안 (원본과 동일)
+const skyGeo = new THREE.SphereGeometry(150, 16, 12);
 const skyMat = new THREE.MeshBasicMaterial({
-  color: 0x87CEEB, side: THREE.BackSide
+  color: 0x5BB8E8, side: THREE.BackSide  // 밝은 파란 하늘
 });
 scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+// 지평선 글로우 (밝은 흰빛)
+const horizonGeo = new THREE.CylinderGeometry(148, 148, 30, 32, 1, true);
+const horizonMat = new THREE.MeshBasicMaterial({
+  color: 0xDDF5FF, transparent: true, opacity: 0.4,
+  side: THREE.BackSide, depthWrite: false
+});
+const horizon = new THREE.Mesh(horizonGeo, horizonMat);
+horizon.position.y = -5;
+scene.add(horizon);
 
 // 구름
 function makeCloud(x, y, z) {
@@ -471,16 +524,21 @@ let touchStartX = 0, touchStartY = 0;
 
 // ---- 자이로 (DeviceOrientation) ----
 let gyroEnabled = false;
-let gyroBaseline = null; // 처음 기울기 기준값
-let gyroGamma = 0; // 좌우 기울기
+let gyroBaseline = null;
+let gyroGamma = 0;        // 스무딩된 현재 기울기
+let gyroRaw = 0;
 
 function requestGyro() {
   if (typeof DeviceOrientationEvent !== 'undefined' &&
       typeof DeviceOrientationEvent.requestPermission === 'function') {
-    // iOS 13+
-    DeviceOrientationEvent.requestPermission().then(state => {
-      if (state === 'granted') enableGyro();
-    }).catch(() => {});
+    // iOS 13+: 사용자 제스처 필요 → 첫 탭에서 요청
+    const askOnce = () => {
+      DeviceOrientationEvent.requestPermission().then(state => {
+        if (state === 'granted') enableGyro();
+      }).catch(() => {});
+      document.removeEventListener('touchstart', askOnce);
+    };
+    document.addEventListener('touchstart', askOnce, { once: true });
   } else {
     enableGyro();
   }
@@ -489,13 +547,17 @@ function requestGyro() {
 function enableGyro() {
   window.addEventListener('deviceorientation', e => {
     if (e.gamma === null) return;
-    if (gyroBaseline === null) gyroBaseline = e.gamma;
-    gyroGamma = e.gamma - gyroBaseline;
-    gyroEnabled = true;
+    // 처음 수신 시 기준값 설정
+    if (gyroBaseline === null) {
+      gyroBaseline = e.gamma;
+      gyroEnabled = true;
+    }
+    // 부드러운 스무딩 (low-pass filter)
+    gyroRaw = e.gamma - gyroBaseline;
+    gyroGamma += (gyroRaw - gyroGamma) * 0.25;
   });
 }
 
-// 자이로 자동 시도
 requestGyro();
 
 // 자이로 레인 이동 타이머
@@ -729,9 +791,10 @@ function loop() {
     });
   }
 
-  // 카메라 추적 (펭귄 뒤 약간 위)
-  camera.position.x += (penguin.position.x * 0.3 - camera.position.x) * dt * 5;
-  camera.lookAt(penguin.position.x * 0.5, 1.5, -8);
+  // 카메라 추적: 펭귄 X 기준으로 살짝만 따라가기 (너무 많이 움직이면 어색)
+  const camTargetX = penguin.position.x * 0.25;
+  camera.position.x += (camTargetX - camera.position.x) * dt * 4;
+  camera.lookAt(penguin.position.x * 0.4, 1.2, -15);
 
   // 자석: 물고기 자동 당기기
   if (magnetTimer > 0) magnetTimer -= dt;
