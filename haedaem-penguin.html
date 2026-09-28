@@ -214,9 +214,9 @@ window.addEventListener('resize', resize);
 resize();
 
 // ── Perspective helpers ──────────────────────────────────
-const HORIZON_Y = 0.40;
-const ROAD_W_BOTTOM = 0.88;
-const ROAD_W_HORIZON = 0.04;
+const HORIZON_Y = 0.32;   // 원본: 지평선이 화면 1/3 지점
+const ROAD_W_BOTTOM = 0.95;  // 원본: 길이 하단 거의 전체
+const ROAD_W_HORIZON = 0.03;
 
 // curveOffset shifts the vanishing point left/right
 function projZ(z, curve) {
@@ -238,124 +238,181 @@ function worldToScreen(wx, wz) {
 
 // ── Drawing ──────────────────────────────────────────────
 function drawBg() {
-  // Sky gradient — brighter, more vivid
-  const g = ctx.createLinearGradient(0, 0, 0, H * HORIZON_Y);
-  g.addColorStop(0, '#0A1628');
-  g.addColorStop(0.5, '#0E4D7A');
-  g.addColorStop(1, '#1A8FAA');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H * HORIZON_Y);
-
-  // Sun glow at horizon
-  const sunX = cx + curveOffset * W * 0.18;
-  const sunY = H * HORIZON_Y;
-  const sunG = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, W * 0.5);
-  sunG.addColorStop(0, 'rgba(255,240,180,0.22)');
-  sunG.addColorStop(0.3, 'rgba(100,200,255,0.12)');
-  sunG.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = sunG;
-  ctx.fillRect(0, 0, W, H * HORIZON_Y);
-
-  // Compute road corners
   const hy = H * HORIZON_Y;
   const hShift = curveOffset * W * 0.18;
   const rhX = cx + hShift + W * ROAD_W_HORIZON / 2;
   const lhX = cx + hShift - W * ROAD_W_HORIZON / 2;
   const rbX = cx + W * ROAD_W_BOTTOM / 2;
   const lbX = cx - W * ROAD_W_BOTTOM / 2;
+  const vpX = cx + hShift; // vanishing point x
 
-  // Left sea
-  const seaLG = ctx.createLinearGradient(0, hy, 0, H);
-  seaLG.addColorStop(0, '#0E5A8A');
-  seaLG.addColorStop(1, '#072B4A');
-  ctx.fillStyle = seaLG;
-  ctx.beginPath();
-  ctx.moveTo(0, hy); ctx.lineTo(lhX, hy);
-  ctx.lineTo(lbX, H); ctx.lineTo(0, H);
-  ctx.fill();
+  // ── 하늘 (밝은 파란 하늘, 원본과 동일) ──
+  const skyG = ctx.createLinearGradient(0, 0, 0, hy);
+  skyG.addColorStop(0, '#4AAFE8');
+  skyG.addColorStop(0.6, '#87CEEB');
+  skyG.addColorStop(1, '#B8E8F8');
+  ctx.fillStyle = skyG;
+  ctx.fillRect(0, 0, W, hy);
 
-  // Right sea
-  const seaRG = ctx.createLinearGradient(W, hy, W, H);
-  seaRG.addColorStop(0, '#0A4A7A');
-  seaRG.addColorStop(1, '#051E38');
-  ctx.fillStyle = seaRG;
-  ctx.beginPath();
-  ctx.moveTo(W, hy); ctx.lineTo(rhX, hy);
-  ctx.lineTo(rbX, H); ctx.lineTo(W, H);
-  ctx.fill();
-
-  // Sea shimmer lines
-  ctx.strokeStyle = 'rgba(100,200,255,0.08)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 6; i++) {
-    const sy = hy + (H - hy) * (i / 6) + (frame * 0.5 + i * 20) % ((H - hy) / 6);
-    ctx.beginPath();
-    ctx.moveTo(0, sy); ctx.lineTo(lbX * (sy - hy) / (H - hy), sy);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(W, sy); ctx.lineTo(W - (W - rbX) * (sy - hy) / (H - hy), sy);
-    ctx.stroke();
+  // 구름들
+  function drawCloud(cx2, cy2, r) {
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.beginPath(); ctx.arc(cx2, cy2, r, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx2 + r*0.7, cy2 + r*0.1, r*0.75, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx2 - r*0.6, cy2 + r*0.15, r*0.65, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx2 + r*0.15, cy2 - r*0.3, r*0.6, 0, Math.PI*2); ctx.fill();
   }
+  const cOff = (frame * 0.12) % W;
+  drawCloud(W*0.15 + cOff % W, hy * 0.25, W*0.07);
+  drawCloud(W*0.7 + cOff % W, hy * 0.18, W*0.055);
+  drawCloud(W*0.45 + cOff % W, hy * 0.38, W*0.045);
+  drawCloud((W*0.9 + cOff) % W, hy * 0.30, W*0.05);
 
-  // Ice road surface
-  const ig = ctx.createLinearGradient(0, hy, 0, H);
-  ig.addColorStop(0, '#9DD8F0');
-  ig.addColorStop(0.4, '#C8EEFF');
-  ig.addColorStop(1, '#E8F8FF');
-  ctx.fillStyle = ig;
+  // ── 길 양옆 하늘 영역 (밝은 파랑, 어두운 바다 아님) ──
+  ctx.fillStyle = '#87CEEB';
+  ctx.fillRect(0, hy, W, H - hy);
+
+  // ── 눈길 바닥 (흰색) ──
+  const roadG = ctx.createLinearGradient(0, hy, 0, H);
+  roadG.addColorStop(0, '#C8EEFF');
+  roadG.addColorStop(0.3, '#E8F6FF');
+  roadG.addColorStop(1, '#F5FBFF');
+  ctx.fillStyle = roadG;
   ctx.beginPath();
   ctx.moveTo(lhX, hy); ctx.lineTo(rhX, hy);
   ctx.lineTo(rbX, H); ctx.lineTo(lbX, H);
   ctx.fill();
 
-  // Road edge shadows (depth)
-  const leftEdgeG = ctx.createLinearGradient(lbX, 0, lbX + 30, 0);
-  leftEdgeG.addColorStop(0, 'rgba(0,80,140,0.35)');
-  leftEdgeG.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = leftEdgeG;
+  // 길 중앙 빛 줄기 (원본의 밝은 중앙)
+  const lightG = ctx.createRadialGradient(vpX, hy, 0, vpX, hy, H * 0.8);
+  lightG.addColorStop(0, 'rgba(255,255,255,0.7)');
+  lightG.addColorStop(0.4, 'rgba(220,245,255,0.25)');
+  lightG.addColorStop(1, 'rgba(200,235,255,0)');
+  ctx.fillStyle = lightG;
   ctx.beginPath();
-  ctx.moveTo(lhX, hy); ctx.lineTo(lhX + 8, hy);
-  ctx.lineTo(lbX + 30, H); ctx.lineTo(lbX, H);
+  ctx.moveTo(lhX, hy); ctx.lineTo(rhX, hy);
+  ctx.lineTo(rbX, H); ctx.lineTo(lbX, H);
   ctx.fill();
 
-  const rightEdgeG = ctx.createLinearGradient(rbX, 0, rbX - 30, 0);
-  rightEdgeG.addColorStop(0, 'rgba(0,80,140,0.35)');
-  rightEdgeG.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = rightEdgeG;
-  ctx.beginPath();
-  ctx.moveTo(rhX, hy); ctx.lineTo(rhX - 8, hy);
-  ctx.lineTo(rbX - 30, H); ctx.lineTo(rbX, H);
-  ctx.fill();
+  // ── 왼쪽 눈더미 절벽 ──
+  function drawSnowBank(side) {
+    const isLeft = side === 'left';
+    const edgeHX = isLeft ? lhX : rhX;
+    const edgeBX = isLeft ? lbX : rbX;
+    const outerX = isLeft ? 0 : W;
 
-  // ── Animated lane lines (scroll from horizon to bottom) ──
-  const NUM_LINES = 10;
-  const scrollFrac = (scrollOffset % 1);
-  ctx.strokeStyle = 'rgba(180,230,255,0.55)';
-  ctx.lineWidth = 1.5;
+    // 눈 절벽 기본 면 (흰색)
+    const snowG = ctx.createLinearGradient(isLeft ? outerX : edgeBX, 0, isLeft ? edgeBX : outerX, 0);
+    if (isLeft) {
+      snowG.addColorStop(0, '#B8D8EE');
+      snowG.addColorStop(0.7, '#DCEEF8');
+      snowG.addColorStop(1, '#FFFFFF');
+    } else {
+      snowG.addColorStop(0, '#FFFFFF');
+      snowG.addColorStop(0.3, '#DCEEF8');
+      snowG.addColorStop(1, '#B8D8EE');
+    }
+    ctx.fillStyle = snowG;
+    ctx.beginPath();
+    ctx.moveTo(outerX, hy);
+    ctx.lineTo(edgeHX, hy);
+    ctx.lineTo(edgeBX, H);
+    ctx.lineTo(outerX, H);
+    ctx.fill();
+
+    // 울퉁불퉁한 눈더미 윗면
+    const snowTopG = ctx.createLinearGradient(0, hy, 0, hy + H*0.18);
+    snowTopG.addColorStop(0, '#FFFFFF');
+    snowTopG.addColorStop(1, 'rgba(200,230,248,0.5)');
+    ctx.fillStyle = snowTopG;
+    ctx.beginPath();
+    ctx.moveTo(outerX, hy);
+    // 눈더미 울퉁불퉁한 실루엣
+    const steps = 10;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const bumpX = isLeft
+        ? outerX + (edgeHX - outerX + (edgeBX - edgeHX) * t) * t + (edgeBX - outerX) * t * (1-t) * 0.3
+        : outerX - (outerX - edgeHX + (outerX - edgeBX) * t) * t - (outerX - edgeBX) * t * (1-t) * 0.3;
+      const seed = i * 137.5;
+      const bumpH = H * 0.06 * (0.5 + 0.5 * Math.sin(seed + frame * 0.0));
+      const bumpY = hy + H * 0.03 - bumpH * (1 - t * 0.5);
+      if (i === 0) ctx.lineTo(isLeft ? outerX : outerX, bumpY);
+      else {
+        const px2 = isLeft
+          ? outerX + (edgeBX - outerX) * t
+          : outerX - (outerX - edgeBX) * t;
+        ctx.lineTo(px2, bumpY);
+      }
+    }
+    ctx.lineTo(edgeBX, H);
+    ctx.lineTo(outerX, H);
+    ctx.closePath();
+    ctx.fill();
+
+    // 그림자 (눈더미 아래 면)
+    ctx.fillStyle = isLeft
+      ? 'rgba(100,160,210,0.25)'
+      : 'rgba(100,160,210,0.25)';
+    ctx.beginPath();
+    ctx.moveTo(edgeHX, hy);
+    ctx.lineTo(isLeft ? edgeHX + W*0.04 : edgeHX - W*0.04, hy);
+    ctx.lineTo(isLeft ? edgeBX + W*0.04 : edgeBX - W*0.04, H);
+    ctx.lineTo(edgeBX, H);
+    ctx.closePath();
+    ctx.fill();
+  }
+  drawSnowBank('left');
+  drawSnowBank('right');
+
+  // 눈더미 위의 얼음 기둥/바위 (배경 장식)
+  function drawIcePillar(x2, y2, w2, h2) {
+    const pg = ctx.createLinearGradient(x2, y2, x2 + w2, y2);
+    pg.addColorStop(0, '#A8D8F0');
+    pg.addColorStop(0.4, '#DCEEFF');
+    pg.addColorStop(1, '#88C4E0');
+    ctx.fillStyle = pg;
+    ctx.beginPath();
+    ctx.moveTo(x2, y2 + h2);
+    ctx.lineTo(x2 + w2 * 0.15, y2);
+    ctx.lineTo(x2 + w2 * 0.85, y2);
+    ctx.lineTo(x2 + w2, y2 + h2);
+    ctx.fill();
+    // 하이라이트
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath();
+    ctx.moveTo(x2 + w2*0.2, y2 + h2);
+    ctx.lineTo(x2 + w2*0.3, y2 + h2*0.05);
+    ctx.lineTo(x2 + w2*0.45, y2 + h2);
+    ctx.fill();
+  }
+  // 배경 얼음 기둥들 (원본 t060에 보이는 것)
+  drawIcePillar(lhX - W*0.18, hy - H*0.22, W*0.14, H*0.28);
+  drawIcePillar(lhX - W*0.05, hy - H*0.15, W*0.09, H*0.18);
+  drawIcePillar(rhX + W*0.06, hy - H*0.18, W*0.12, H*0.22);
+  drawIcePillar(rhX + W*0.22, hy - H*0.12, W*0.1, H*0.16);
+
+  // ── 길 위 가로 라인 스크롤 (속도감) ──
+  const NUM_LINES = 12;
+  const scrollFrac = scrollOffset % 1;
+  ctx.strokeStyle = 'rgba(160,220,245,0.45)';
+  ctx.lineWidth = 1.2;
   for (let i = 0; i < NUM_LINES; i++) {
-    const t = ((i + scrollFrac) / NUM_LINES); // 0=horizon, 1=bottom
+    const t = (i + scrollFrac) / NUM_LINES;
     if (t < 0.01 || t > 0.99) continue;
-    const z = 1 - t; // z=1 horizon, z=0 near
+    const z = 1 - t;
     const { y, rw, xCenter } = projZ(z);
     ctx.beginPath();
-    ctx.moveTo(xCenter - rw / 2, y);
-    ctx.lineTo(xCenter + rw / 2, y);
+    ctx.moveTo(xCenter - rw/2, y);
+    ctx.lineTo(xCenter + rw/2, y);
     ctx.stroke();
   }
 
-  // Road edge lines
-  ctx.strokeStyle = 'rgba(80,180,230,0.9)';
-  ctx.lineWidth = 3;
+  // 길 가장자리 라인
+  ctx.strokeStyle = 'rgba(100,180,220,0.7)';
+  ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(lhX, hy); ctx.lineTo(lbX, H); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(rhX, hy); ctx.lineTo(rbX, H); ctx.stroke();
-
-  // Horizon glow line
-  const hg = ctx.createLinearGradient(0, hy - 8, 0, hy + 8);
-  hg.addColorStop(0, 'rgba(200,240,255,0)');
-  hg.addColorStop(0.5, 'rgba(200,240,255,0.4)');
-  hg.addColorStop(1, 'rgba(200,240,255,0)');
-  ctx.fillStyle = hg;
-  ctx.fillRect(0, hy - 8, W, 16);
 }
 
 // ── Penguin ──────────────────────────────────────────────
@@ -367,12 +424,11 @@ const SKIN_COLORS = [
 
 function drawPenguin() {
   const skin = SKIN_COLORS[selectedSkin];
-  const groundY = H - 90;
+  const groundY = H - 70;
   const px = cx + penX * W * ROAD_W_BOTTOM / 2 * 0.72;
-  // penY: 0=ground, 1=peak jump. Convert to pixels upward
-  const jumpPixels = penY * H * 0.22;
+  const jumpPixels = penY * H * 0.25;
   const penScreenY = groundY - jumpPixels;
-  const s = rocketActive ? 1.3 : 1.0;
+  const s = rocketActive ? 1.8 : 1.5;  // 원본처럼 크게
 
   // Shadow on ice (shrinks as penguin rises)
   const shadowAlpha = 0.35 * (1 - penY * 0.7);
