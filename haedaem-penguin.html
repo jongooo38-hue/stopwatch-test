@@ -128,11 +128,28 @@ const ICEBERGS=[{x:0.10,w:0.09,h:0.11,tilt:-0.08},{x:0.82,w:0.07,h:0.09,tilt:0.0
 const SNOWFLAKES=Array.from({length:90},()=>({x:Math.random()*800,y:Math.random()*800,r:0.5+Math.random()*2.5,vx:(Math.random()-0.5)*0.4,vy:0.3+Math.random()*0.8,alpha:0.3+Math.random()*0.7,wb:Math.random()*Math.PI*2,wbs:0.02+Math.random()*0.03}));
 const WAVE_LINES=[{fy:0.46,amp:4,freq:0.012,spd:0.03,alpha:0.25,lw:1.5},{fy:0.50,amp:6,freq:0.009,spd:0.022,alpha:0.20,lw:1.2},{fy:0.53,amp:3,freq:0.015,spd:0.04,alpha:0.18,lw:1.0},{fy:0.56,amp:5,freq:0.011,spd:0.018,alpha:0.15,lw:0.8}];
 const SUB_FISH=Array.from({length:14},()=>({x:Math.random(),depth:0.3+Math.random()*0.6,spd:0.0006+Math.random()*0.001,flip:Math.random()<0.5,ph:Math.random()*Math.PI*2,sz:0.012+Math.random()*0.018}));
+let gyroBase=null; // 게임 시작 시 기준값
 function initGyro(){
-  if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){DeviceOrientationEvent.requestPermission().then(s=>{if(s==='granted')window.addEventListener('deviceorientation',onOrient);}).catch(()=>{});}
-  else if('DeviceOrientationEvent' in window)window.addEventListener('deviceorientation',onOrient);
+  // iOS 13+
+  if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+    DeviceOrientationEvent.requestPermission().then(s=>{if(s==='granted')window.addEventListener('deviceorientation',onOrient);}).catch(()=>{});
+  } else if('DeviceOrientationEvent' in window){
+    window.addEventListener('deviceorientation',onOrient);
+  }
+  gyroBase=null; // 시작할 때 기준값 리셋
 }
-function onOrient(e){tiltRaw=Math.max(-1,Math.min(1,(e.gamma||0)/30));}
+function onOrient(e){
+  if(e.gamma===null||e.gamma===undefined)return;
+  // 첫 이벤트: 현재 기울기를 기준(0)으로
+  if(gyroBase===null) gyroBase=e.gamma;
+  const delta=e.gamma-gyroBase;
+  // 민감도: 15도 기울이면 최대 (기존 30도 → 15도로 개선)
+  tiltRaw=Math.max(-1,Math.min(1,delta/15));
+}
+// Android: 페이지 로드 즉시 등록 (iOS는 startGame에서 initGyro 호출 시 권한 요청)
+if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission!=='function'){
+  window.addEventListener('deviceorientation',onOrient);
+}
 canvas.addEventListener('touchstart',e=>{e.preventDefault();if(!gameRunning)return;jump();},{passive:false});
 canvas.addEventListener('click',()=>{if(gameRunning)jump();});
 window.addEventListener('keydown',e=>{if(!gameRunning)return;if(e.key==='ArrowLeft')tiltRaw=-0.6;if(e.key==='ArrowRight')tiltRaw=0.6;if(e.key===' ')jump();});
