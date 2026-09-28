@@ -316,6 +316,7 @@ for (const [x,y,z] of cloudPositions) {
 }
 
 // ---- 펭귄 만들기 ----
+// 펭귄이 -Z 방향(앞쪽)을 바라보도록: 얼굴/배 Z 음수 방향
 function makePenguin() {
   const group = new THREE.Group();
 
@@ -327,40 +328,40 @@ function makePenguin() {
   body.castShadow = true;
   group.add(body);
 
-  // 흰 배
+  // 흰 배 (앞쪽 = -Z)
   const bellyGeo = new THREE.SphereGeometry(0.35, 10, 8);
   bellyGeo.scale(1, 1.2, 0.5);
   const belly = new THREE.Mesh(bellyGeo, matPenguinBelly);
-  belly.position.set(0, 0.72, 0.38);
+  belly.position.set(0, 0.72, -0.38);
   group.add(belly);
 
   // 머리
   const headGeo = new THREE.SphereGeometry(0.38, 12, 10);
   const head = new THREE.Mesh(headGeo, matPenguinBody);
-  head.position.set(0, 1.55, 0.05);
+  head.position.set(0, 1.55, -0.05);
   head.castShadow = true;
   group.add(head);
 
-  // 흰 얼굴
+  // 흰 얼굴 (앞쪽 = -Z)
   const faceGeo = new THREE.SphereGeometry(0.25, 10, 8);
   faceGeo.scale(1, 0.9, 0.5);
   const face = new THREE.Mesh(faceGeo, matPenguinBelly);
-  face.position.set(0, 1.52, 0.3);
+  face.position.set(0, 1.52, -0.3);
   group.add(face);
 
-  // 눈
+  // 눈 (앞쪽 = -Z)
   for (const side of [-1, 1]) {
     const eyeGeo = new THREE.SphereGeometry(0.06, 6, 6);
     const eye = new THREE.Mesh(eyeGeo, matPenguinEye);
-    eye.position.set(side * 0.12, 1.62, 0.52);
+    eye.position.set(side * 0.12, 1.62, -0.52);
     group.add(eye);
   }
 
-  // 부리
+  // 부리 (앞쪽 = -Z)
   const beakGeo = new THREE.ConeGeometry(0.07, 0.18, 6);
   const beak = new THREE.Mesh(beakGeo, matPenguinBeak);
-  beak.rotation.x = Math.PI / 2;
-  beak.position.set(0, 1.48, 0.55);
+  beak.rotation.x = -Math.PI / 2;
+  beak.position.set(0, 1.48, -0.55);
   group.add(beak);
 
   // 날개 (양쪽)
@@ -368,7 +369,7 @@ function makePenguin() {
     const wingGeo = new THREE.SphereGeometry(0.22, 8, 6);
     wingGeo.scale(0.5, 1.2, 0.6);
     const wing = new THREE.Mesh(wingGeo, matPenguinBody);
-    wing.position.set(side * 0.7, 0.85, 0.05);
+    wing.position.set(side * 0.7, 0.85, -0.05);
     wing.rotation.z = side * 0.3;
     group.add(wing);
   }
@@ -378,7 +379,7 @@ function makePenguin() {
     const footGeo = new THREE.SphereGeometry(0.15, 6, 4);
     footGeo.scale(1.5, 0.4, 1.2);
     const foot = new THREE.Mesh(footGeo, matPenguinFeet);
-    foot.position.set(side * 0.2, 0.08, 0.15);
+    foot.position.set(side * 0.2, 0.08, -0.1);
     group.add(foot);
   }
 
@@ -468,6 +469,38 @@ function showPopup(msg, duration = 1500) {
 // ---- 입력 ----
 let touchStartX = 0, touchStartY = 0;
 
+// ---- 자이로 (DeviceOrientation) ----
+let gyroEnabled = false;
+let gyroBaseline = null; // 처음 기울기 기준값
+let gyroGamma = 0; // 좌우 기울기
+
+function requestGyro() {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // iOS 13+
+    DeviceOrientationEvent.requestPermission().then(state => {
+      if (state === 'granted') enableGyro();
+    }).catch(() => {});
+  } else {
+    enableGyro();
+  }
+}
+
+function enableGyro() {
+  window.addEventListener('deviceorientation', e => {
+    if (e.gamma === null) return;
+    if (gyroBaseline === null) gyroBaseline = e.gamma;
+    gyroGamma = e.gamma - gyroBaseline;
+    gyroEnabled = true;
+  });
+}
+
+// 자이로 자동 시도
+requestGyro();
+
+// 자이로 레인 이동 타이머
+let gyroLaneCooldown = 0;
+
 document.addEventListener('keydown', e => {
   if (gameState !== 'playing') return;
   if (e.key === 'ArrowLeft') moveLane(-1);
@@ -479,6 +512,10 @@ document.addEventListener('keydown', e => {
 canvas.addEventListener('touchstart', e => {
   touchStartX = e.touches[0].clientX;
   touchStartY = e.touches[0].clientY;
+  // 자이로 기준 리셋 (게임 시작 시 현재 기울기를 0으로)
+  if (gyroBaseline !== null) {
+    // 터치로 기준 재조정 없음, 그냥 유지
+  }
 }, { passive: true });
 
 canvas.addEventListener('touchend', e => {
@@ -486,14 +523,16 @@ canvas.addEventListener('touchend', e => {
   const dx = e.changedTouches[0].clientX - touchStartX;
   const dy = e.changedTouches[0].clientY - touchStartY;
   if (Math.abs(dy) > Math.abs(dx) && dy < -30) { doJump(); return; }
-  if (Math.abs(dx) > 30) moveLane(dx > 0 ? 1 : -1);
+  if (!gyroEnabled && Math.abs(dx) > 30) moveLane(dx > 0 ? 1 : -1);
 }, { passive: true });
 
 canvas.addEventListener('click', e => {
   if (gameState === 'start') { startGame(); return; }
   if (gameState !== 'playing') return;
-  const cx = window.innerWidth / 2;
-  moveLane(e.clientX > cx ? 1 : -1);
+  if (!gyroEnabled) {
+    const cx = window.innerWidth / 2;
+    moveLane(e.clientX > cx ? 1 : -1);
+  }
 });
 
 function moveLane(dir) {
@@ -540,6 +579,8 @@ function startGame() {
   items.length = 0;
 
   penguin.position.set(LANE_X[1], 0, 0);
+  gyroBaseline = null; // 게임 시작 시 현재 기울기를 새 기준으로
+  gyroLaneCooldown = 0;
   gameState = 'playing';
   updateUI();
 }
@@ -641,6 +682,13 @@ function loop() {
     renderer.render(scene, camera);
     return;
   }
+
+  // 자이로 레인 이동
+  if (gyroEnabled && gyroLaneCooldown <= 0) {
+    if (gyroGamma < -12) { moveLane(-1); gyroLaneCooldown = 0.35; }
+    else if (gyroGamma > 12) { moveLane(1); gyroLaneCooldown = 0.35; }
+  }
+  if (gyroLaneCooldown > 0) gyroLaneCooldown -= dt;
 
   // 속도 증가
   speed = 8 + dist * 0.005;
