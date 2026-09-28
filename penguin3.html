@@ -185,33 +185,35 @@ function drawIcebergs(){for(const ib of ICEBERGS){const bx=ib.x*W,by=HORIZON,bw=
 function drawSea(){const sg=ctx.createLinearGradient(0,HORIZON,0,RY);sg.addColorStop(0,'#1A7AA0');sg.addColorStop(0.4,'#0D4F7A');sg.addColorStop(1,'#061E3C');ctx.fillStyle=sg;ctx.fillRect(0,HORIZON,W,RY-HORIZON);for(const wl of WAVE_LINES){const wy=wl.fy*H;if(wy<HORIZON||wy>RY)continue;ctx.save();ctx.globalAlpha=wl.alpha;ctx.strokeStyle='rgba(180,230,255,1)';ctx.lineWidth=wl.lw;ctx.beginPath();for(let x=0;x<=W;x+=3){const y=wy+Math.sin(x*wl.freq+t*wl.spd)*wl.amp+Math.sin(x*wl.freq*2.1+t*wl.spd*1.4)*wl.amp*0.35;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();ctx.restore();}ctx.save();ctx.globalAlpha=0.07;for(let i=0;i<8;i++){const sx=((i*W/7+t*12)%(W*1.3))-W*0.15,sy=HORIZON+(RY-HORIZON)*0.2+Math.sin(t*0.03+i)*15,sg2=ctx.createLinearGradient(sx,sy,sx+80,sy+15);sg2.addColorStop(0,'rgba(255,255,255,0)');sg2.addColorStop(0.5,'rgba(255,255,255,1)');sg2.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=sg2;ctx.fillRect(sx,sy,80,3);}ctx.restore();}
 function drawSnowflakes(){ctx.fillStyle='#FFFFFF';for(const sf of SNOWFLAKES){sf.wb+=sf.wbs;sf.x+=sf.vx+Math.sin(sf.wb)*0.3+tiltSmooth*0.5;sf.y+=sf.vy;if(sf.y>H){sf.y=-5;sf.x=Math.random()*W;}if(sf.x>W+5)sf.x=-5;if(sf.x<-5)sf.x=W+5;ctx.globalAlpha=sf.alpha*0.8;ctx.beginPath();ctx.arc(sf.x,sf.y,sf.r,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;}
 function drawIceRoad(){for(let i=0;i<18;i++){const t1=i/18,t2=(i+1)/18,y1=HORIZON+(RY-HORIZON)*t1,y2=HORIZON+(RY-HORIZON)*t2,xl1=ROAD_LEFT+(W/2-ROAD_LEFT)*t1,xr1=W-xl1,xl2=ROAD_LEFT+(W/2-ROAD_LEFT)*t2,xr2=W-xl2,f=i/18;ctx.fillStyle=`rgb(${Math.round(120+f*80)},${Math.round(190+f*50)},${Math.round(220+f*25)})`;ctx.beginPath();ctx.moveTo(xl1,y1);ctx.lineTo(xr1,y1);ctx.lineTo(xr2,y2);ctx.lineTo(xl2,y2);ctx.closePath();ctx.fill();}const specG=ctx.createLinearGradient(W/2-80,RY,W/2+80,RY);specG.addColorStop(0,'rgba(255,255,255,0)');specG.addColorStop(0.5,'rgba(255,255,255,0.18)');specG.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=specG;ctx.beginPath();ctx.moveTo(W/2-2,HORIZON);ctx.lineTo(W/2+2,HORIZON);ctx.lineTo(W/2+120,RY);ctx.lineTo(W/2-120,RY);ctx.closePath();ctx.fill();ctx.strokeStyle='rgba(150,210,240,0.22)';for(let i=1;i<14;i++){const frac=i/14,yLine=HORIZON+(RY-HORIZON)*frac,xL=ROAD_LEFT+(W/2-ROAD_LEFT)*frac,xR=W-xL;ctx.lineWidth=0.5+frac*0.6;ctx.beginPath();ctx.moveTo(xL,yLine);ctx.lineTo(xR,yLine);ctx.stroke();}ctx.setLineDash([12,14]);ctx.strokeStyle='rgba(180,230,250,0.18)';ctx.lineWidth=0.8;for(let lane=-2;lane<=2;lane++){if(lane===0)continue;ctx.beginPath();ctx.moveTo(W/2+lane*(W*0.06),HORIZON+2);ctx.lineTo(W/2+lane*(W*0.35),RY);ctx.stroke();}ctx.setLineDash([]);for(const sf of SUB_FISH){sf.x+=sf.spd;if(sf.x>1.15)sf.x=-0.15;sf.ph+=0.04;const sx=sf.x*W,sy=RY-14+Math.sin(sf.ph)*4,sz=sf.sz*W*(0.4+sf.depth*0.6);ctx.save();ctx.globalAlpha=0.06+sf.depth*0.07;ctx.fillStyle='#88DDFF';if(sf.flip)ctx.scale(-1,1);const bx=sf.flip?-sx:sx;ctx.beginPath();ctx.ellipse(bx,sy,sz,sz*0.35,Math.sin(sf.ph*0.3)*0.1,0,Math.PI*2);ctx.fill();ctx.restore();}ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(W/2,HORIZON);ctx.lineTo(ROAD_LEFT,RY);ctx.stroke();ctx.beginPath();ctx.moveTo(W/2,HORIZON);ctx.lineTo(ROAD_RIGHT,RY);ctx.stroke();}
-function drawIceCliffs(){
-  // 도로 왼쪽 경계: (W/2,HORIZON)→(ROAD_LEFT,RY)
-  // 도로 오른쪽 경계: (W/2,HORIZON)→(ROAD_RIGHT,RY)
-  // 절벽 = 화면 가장자리 ~ 도로 경계선 사이 삼각형
+function drawSnowSides(){
+  // 원본 슈퍼펭귄처럼 도로 양쪽 = 눈 덮인 평지
+  // 왼쪽: (0,HORIZON)~(W/2,HORIZON)~(ROAD_LEFT,RY)~(0,RY)
+  // 오른쪽: (W/2,HORIZON)~(W,HORIZON)~(W,RY)~(ROAD_RIGHT,RY)
   ctx.save();
   const hy=HORIZON,ry=RY,vx=W/2;
+  const sg=ctx.createLinearGradient(0,hy,0,ry);
+  sg.addColorStop(0,'#C8E8F4');sg.addColorStop(0.5,'#A0CCE4');sg.addColorStop(1,'#7AAEC8');
 
-  // 왼쪽 절벽: (0,hy) (vx,hy) (ROAD_LEFT,ry) (0,ry)
-  const lg=ctx.createLinearGradient(0,hy,ROAD_LEFT,ry);
-  lg.addColorStop(0,'#B8DCED');lg.addColorStop(1,'#7AB4D0');
-  ctx.fillStyle=lg;
+  // 왼쪽
+  ctx.fillStyle=sg;
   ctx.beginPath();
   ctx.moveTo(0,hy);ctx.lineTo(vx,hy);ctx.lineTo(ROAD_LEFT,ry);ctx.lineTo(0,ry);
   ctx.closePath();ctx.fill();
-  // 엣지 하이라이트
-  ctx.fillStyle='rgba(230,248,255,0.3)';
-  ctx.beginPath();ctx.moveTo(vx,hy);ctx.lineTo(vx-4,hy);ctx.lineTo(ROAD_LEFT-6,ry);ctx.lineTo(ROAD_LEFT,ry);ctx.closePath();ctx.fill();
-
-  // 오른쪽 절벽: (W,hy) (vx,hy) (ROAD_RIGHT,ry) (W,ry)
-  const rg=ctx.createLinearGradient(W,hy,ROAD_RIGHT,ry);
-  rg.addColorStop(0,'#A8D0E8');rg.addColorStop(1,'#6AA8C8');
-  ctx.fillStyle=rg;
+  // 눈 반짝임
+  ctx.fillStyle='rgba(255,255,255,0.15)';
   ctx.beginPath();
-  ctx.moveTo(W,hy);ctx.lineTo(vx,hy);ctx.lineTo(ROAD_RIGHT,ry);ctx.lineTo(W,ry);
+  ctx.moveTo(0,hy);ctx.lineTo(vx*0.5,hy);ctx.lineTo(ROAD_LEFT*0.4,ry);ctx.lineTo(0,ry);
   ctx.closePath();ctx.fill();
-  ctx.fillStyle='rgba(230,248,255,0.3)';
-  ctx.beginPath();ctx.moveTo(vx,hy);ctx.lineTo(vx+4,hy);ctx.lineTo(ROAD_RIGHT+6,ry);ctx.lineTo(ROAD_RIGHT,ry);ctx.closePath();ctx.fill();
+
+  // 오른쪽
+  ctx.fillStyle=sg;
+  ctx.beginPath();
+  ctx.moveTo(vx,hy);ctx.lineTo(W,hy);ctx.lineTo(W,ry);ctx.lineTo(ROAD_RIGHT,ry);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.15)';
+  ctx.beginPath();
+  ctx.moveTo(vx+(W-vx)*0.5,hy);ctx.lineTo(W,hy);ctx.lineTo(W,ry);ctx.lineTo(ROAD_RIGHT+(W-ROAD_RIGHT)*0.6,ry);
+  ctx.closePath();ctx.fill();
 
   ctx.restore();
 }
@@ -313,7 +315,7 @@ function update(){
 function render(){
   ctx.clearRect(0,0,W,H);
   drawSky();drawStars();drawAuroras();drawClouds();drawIcebergs();drawSea();drawHorizonGlow();
-  drawIceCliffs();drawIceRoad();drawSnowflakes();
+  drawSnowSides();drawIceRoad();drawSnowflakes();
   for(const it of items){if(!it.collected)drawDetailedFish(it.x,it.y,it.s,it.fishT,it.cs);}
   for(const ob of obstacles){ctx.save();if(ob.type==='icechunk')drawIceChunk(ob.x,ob.y,ob.s);else if(ob.type==='octopus')drawOctopus(ob.x,ob.y,ob.s,ob.T);ctx.restore();}
   if(flashTimer>0&&Math.floor(flashTimer/6)%2===0){ctx.save();ctx.globalAlpha=0.3;ctx.fillStyle='#FF3333';ctx.fillRect(0,0,W,H);ctx.restore();}
