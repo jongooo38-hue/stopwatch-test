@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>해담펭귄</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #87CEEB; }
+#c { display: block; touch-action: none; position: fixed; top: 0; left: 0; }
+#ui {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
+}
+#dist {
+  position: absolute; top: max(env(safe-area-inset-top,0px), 16px);
+  left: 50%; transform: translateX(-50%);
+  color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.7);
+  text-align: center; line-height: 1.2;
+}
+#dist .main { font-size: clamp(28px,8vw,44px); font-weight: 900; }
+#dist .best { font-size: clamp(12px,3.5vw,18px); opacity: .8; }
+#fish-ui {
+  position: absolute; top: max(env(safe-area-inset-top,0px), 16px);
+  right: 16px; display: flex; align-items: center; gap: 6px;
+  background: rgba(0,0,0,.4); border-radius: 20px; padding: 6px 12px;
+  color: #FFD700; font-size: clamp(16px,4.5vw,24px); font-weight: 700;
+}
+#hearts {
+  position: absolute; top: max(env(safe-area-inset-top,0px), 16px);
+  left: 16px; display: flex; gap: 4px; font-size: clamp(20px,5.5vw,30px);
+}
+#gear-btn {
+  position: absolute; bottom: max(env(safe-area-inset-bottom,0px), 20px);
+  left: 16px; font-size: 28px; cursor: pointer; pointer-events: all;
+  background: rgba(0,0,0,.4); border-radius: 50%; width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+}
+#popup {
+  position: absolute; top: 35%; left: 50%; transform: translate(-50%,-50%);
+  background: rgba(0,0,0,.75); color: #fff; border-radius: 16px;
+  padding: 16px 28px; text-align: center; font-size: clamp(18px,5vw,28px);
+  font-weight: 800; pointer-events: none; transition: opacity .4s;
+  white-space: nowrap;
+}
+#shop-overlay {
+  position: fixed; inset: 0; background: rgba(0,30,60,.92);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 16px; padding: 24px;
+  pointer-events: all; z-index: 10;
+}
+#shop-overlay h2 { color:#FFD700; font-size:clamp(22px,6vw,32px); margin-bottom:8px; }
+.shop-item {
+  background: rgba(255,255,255,.12); border-radius: 12px;
+  padding: 12px 20px; width: 100%; max-width: 320px;
+  display: flex; align-items: center; justify-content: space-between;
+  color: #fff; font-size: clamp(14px,4vw,18px);
+}
+.shop-item button {
+  background: #FFD700; color: #000; border: none;
+  border-radius: 8px; padding: 6px 14px; font-weight: 700;
+  font-size: clamp(13px,3.5vw,16px); cursor: pointer;
+  pointer-events: all;
+}
+#close-shop {
+  margin-top: 8px; background: rgba(255,255,255,.2);
+  color: #fff; border: none; border-radius: 10px;
+  padding: 10px 32px; font-size: clamp(15px,4vw,20px);
+  font-weight: 700; cursor: pointer; pointer-events: all;
+}
+#start-screen {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  pointer-events: all;
+}
+#start-screen h1 {
+  color: #fff; font-size: clamp(32px,10vw,56px); font-weight: 900;
+  text-shadow: 0 3px 12px rgba(0,100,200,.8);
+  margin-bottom: 32px; letter-spacing: 2px;
+}
+#start-btn {
+  background: linear-gradient(135deg, #FFD700, #FF8C00);
+  color: #000; border: none; border-radius: 50px;
+  padding: 16px 48px; font-size: clamp(20px,6vw,32px);
+  font-weight: 900; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,.4);
+  letter-spacing: 1px;
+}
+#gameover-screen {
+  position: fixed; inset: 0; z-index: 20;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.6); pointer-events: all;
+}
+#gameover-screen h2 { color:#fff; font-size:clamp(28px,8vw,48px); font-weight:900; margin-bottom:12px; }
+#gameover-screen .score { color:#FFD700; font-size:clamp(20px,6vw,32px); margin-bottom:28px; }
+#retry-btn {
+  background: linear-gradient(135deg, #4CAF50, #2E7D32);
+  color: #fff; border: none; border-radius: 50px;
+  padding: 14px 40px; font-size: clamp(18px,5vw,28px);
+  font-weight: 900; cursor: pointer;
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div id="dist">
+    <div class="main" id="distNum">0m</div>
+    <div class="best" id="bestNum">Best: 0m</div>
+  </div>
+  <div id="fish-ui">🐟 <span id="fishNum">0</span></div>
+  <div id="hearts" id="heartsUI"></div>
+  <div id="gear-btn" onclick="openShop()">⚙️</div>
+  <div id="popup" style="opacity:0"></div>
+</div>
+
+<div id="shop-overlay" style="display:none">
+  <h2>🐟 상점</h2>
+  <div class="shop-item">
+    <span>❤️ 하트 +1 (최대3)</span>
+    <button onclick="buyHeart()">30🐟</button>
+  </div>
+  <div class="shop-item">
+    <span>🚀 로켓 부스터</span>
+    <button onclick="buyRocket()">50🐟</button>
+  </div>
+  <div class="shop-item">
+    <span>🧲 자석 (10초)</span>
+    <button onclick="buyMagnet()">40🐟</button>
+  </div>
+  <button id="close-shop" onclick="closeShop()">닫기</button>
+</div>
+
+<div id="start-screen">
+  <h1>🐧 해담펭귄</h1>
+  <button id="start-btn" onclick="startGame()">시작!</button>
+</div>
+
+<div id="gameover-screen">
+  <h2>💀 게임 오버</h2>
+  <div class="score" id="go-score"></div>
+  <button id="retry-btn" onclick="startGame()">다시하기</button>
+</div>
+
+<!-- Three.js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+/* ===== THREE.JS 슈퍼펭귄 클론 ===== */
+
+// ---- Canvas / Renderer ----
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x87CEEB);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
+scene.fog = new THREE.Fog(0xB8E8F8, 30, 80);
+
+// ---- Camera ----
+const camera = new THREE.PerspectiveCamera(65, 1, 0.1, 200);
+// 원본: 더 낮은 시점, 펭귄 더 크게, 통로가 화면 아래쪽 많이 차지
+camera.position.set(0, 3.5, 6);
+camera.lookAt(0, 1, -12);
+
+// ---- Resize ----
+function resize() {
+  const W = window.innerWidth, H = window.innerHeight;
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  camera.aspect = W / H;
+  camera.updateProjectionMatrix();
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ---- Lights ----
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+sunLight.position.set(10, 30, 10);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 1024;
+sunLight.shadow.mapSize.height = 1024;
+sunLight.shadow.camera.near = 0.1;
+sunLight.shadow.camera.far = 100;
+sunLight.shadow.camera.left = -20;
+sunLight.shadow.camera.right = 20;
+sunLight.shadow.camera.top = 20;
+sunLight.shadow.camera.bottom = -20;
+scene.add(sunLight);
+
+// rim light (파란 느낌)
+const rimLight = new THREE.DirectionalLight(0x4080FF, 0.4);
+rimLight.position.set(-5, 10, -20);
+scene.add(rimLight);
+
+// ---- Materials ----
+// 원본: 통로는 밝은 시안(cyan-white), 눈 언덕은 순백
+const matSnowRoad = new THREE.MeshLambertMaterial({ color: 0xC8F0FF }); // 시안빛 눈 통로
+const matSnowBank = new THREE.MeshLambertMaterial({ color: 0xF0FAFF }); // 흰 눈 언덕
+const matIce = new THREE.MeshPhongMaterial({ color: 0x88CCFF, transparent: true, opacity: 0.85, shininess: 120 });
+const matPenguinBody = new THREE.MeshPhongMaterial({ color: 0x1133AA, shininess: 60 }); // 진한 파란 몸
+const matPenguinBelly = new THREE.MeshPhongMaterial({ color: 0xFFFFFF, shininess: 30 }); // 흰 배
+const matPenguinBeak = new THREE.MeshPhongMaterial({ color: 0xFF7700, shininess: 40 }); // 주황 부리
+const matPenguinFeet = new THREE.MeshPhongMaterial({ color: 0xFF7700, shininess: 40 }); // 주황 발
+const matPenguinEye = new THREE.MeshPhongMaterial({ color: 0x000000 });
+
+// ---- Road ----
+const ROAD_W = 7; // 원본보다 넓게
+const ROAD_LENGTH = 150;
+
+const roadGeo = new THREE.PlaneGeometry(ROAD_W, ROAD_LENGTH, 1, 20);
+const road = new THREE.Mesh(roadGeo, matSnowRoad);
+road.rotation.x = -Math.PI / 2;
+road.position.set(0, 0, -ROAD_LENGTH/2 + 10);
+road.receiveShadow = true;
+scene.add(road);
+
+// 도로 중앙 빛 반사 (원본의 중앙 하얀 빛 줄기 — 더 밝고 넓게)
+const centerGlowGeo = new THREE.PlaneGeometry(2.0, ROAD_LENGTH);
+const centerGlowMat = new THREE.MeshBasicMaterial({
+  color: 0xFFFFFF, transparent: true, opacity: 0.5, depthWrite: false
+});
+const centerGlow = new THREE.Mesh(centerGlowGeo, centerGlowMat);
+centerGlow.rotation.x = -Math.PI / 2;
+centerGlow.position.set(0, 0.01, -ROAD_LENGTH/2 + 10);
+scene.add(centerGlow);
+
+// 도로 엣지 라인 (양쪽 경계선)
+for (const side of [-1, 1]) {
+  const edgeGeo = new THREE.PlaneGeometry(0.15, ROAD_LENGTH);
+  const edgeMat = new THREE.MeshBasicMaterial({ color: 0xAADDFF, transparent: true, opacity: 0.6 });
+  const edge = new THREE.Mesh(edgeGeo, edgeMat);
+  edge.rotation.x = -Math.PI / 2;
+  edge.position.set(side * ROAD_W/2, 0.02, -ROAD_LENGTH/2 + 10);
+  scene.add(edge);
+}
+
+// ---- Snow Banks (양쪽 눈 언덕) ----
+// 원본: 큰 눈 더미가 통로 바로 옆에 붙어서 벽처럼
+function makeSnowBank(side) {
+  const group = new THREE.Group();
+  for (let i = 0; i < 30; i++) {
+    // 크기 다양하게 — 큰 것과 작은 것 섞기
+    const r = 2.0 + Math.random() * 2.5;
+    const geo = new THREE.SphereGeometry(r, 10, 7);
+    // Y 압축으로 납작하게 (눈 더미처럼)
+    geo.scale(1, 0.7, 1);
+    const mesh = new THREE.Mesh(geo, matSnowBank);
+    const xOffset = ROAD_W/2 + r * 0.5 + Math.random() * 2.0;
+    mesh.position.set(
+      side * xOffset,
+      r * 0.2 - 0.3,
+      -i * 5 - Math.random() * 4
+    );
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+
+    // 작은 눈 덩어리 겹쳐서 자연스럽게
+    if (Math.random() > 0.4) {
+      const r2 = r * 0.6;
+      const geo2 = new THREE.SphereGeometry(r2, 8, 6);
+      geo2.scale(1, 0.7, 1);
+      const mesh2 = new THREE.Mesh(geo2, matSnowBank);
+      mesh2.position.set(
+        side * (xOffset + (Math.random()-0.5)*2),
+        r2 * 0.5,
+        -i * 5 - Math.random() * 4 - 2
+      );
+      group.add(mesh2);
+    }
+  }
+  return group;
+}
+
+const leftBanks = makeSnowBank(-1);
+const rightBanks = makeSnowBank(1);
+scene.add(leftBanks);
+scene.add(rightBanks);
+
+// ---- Ice Pillars (배경 얼음 기둥) ----
+// 원본: 통로 끝 지평선 바로 뒤에 거대한 얼음 기둥들
+function makeIcePillars() {
+  const group = new THREE.Group();
+  // 가운데 쪽 기둥 (통로 끝에 솟음)
+  const positions = [
+    [-5, -25, 14], [5, -25, 12],      // 앞쪽 가까운 기둥
+    [-10, -40, 18], [10, -40, 16],
+    [-3, -30, 20], [3, -30, 22],       // 중앙 큰 기둥들
+    [-15, -55, 12], [15, -55, 14],
+    [-7, -70, 16], [7, -70, 14],
+    [-20, -85, 10], [20, -85, 12],
+  ];
+  for (const [x, z, h] of positions) {
+    // 기둥 본체
+    const geo = new THREE.CylinderGeometry(1.2, 2.0, h, 6);
+    const mesh = new THREE.Mesh(geo, matIce);
+    mesh.position.set(x, h/2, z);
+    mesh.castShadow = true;
+    group.add(mesh);
+
+    // 위 뾰족 끝 (복수)
+    for (let c = 0; c < 2; c++) {
+      const capH = 3 + Math.random() * 4;
+      const capGeo = new THREE.ConeGeometry(0.9 - c*0.3, capH, 6);
+      const capMesh = new THREE.Mesh(capGeo, matIce);
+      capMesh.position.set(x + c*0.8, h + capH/2, z);
+      group.add(capMesh);
+    }
+
+    // 기둥 아래 눈 더미
+    const snowGeo = new THREE.SphereGeometry(2.2, 8, 6);
+    snowGeo.scale(1, 0.5, 1);
+    const snowMesh = new THREE.Mesh(snowGeo, matSnowBank);
+    snowMesh.position.set(x, 0.3, z);
+    group.add(snowMesh);
+  }
+  return group;
+}
+
+const icePillars = makeIcePillars();
+scene.add(icePillars);
+
+// ---- 하늘 / 구름 배경 ----
+// 위는 진한 하늘, 아래로 갈수록 밝은 시안 (원본과 동일)
+const skyGeo = new THREE.SphereGeometry(150, 16, 12);
+const skyMat = new THREE.MeshBasicMaterial({
+  color: 0x5BB8E8, side: THREE.BackSide  // 밝은 파란 하늘
+});
+scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+// 지평선 글로우 (밝은 흰빛)
+const horizonGeo = new THREE.CylinderGeometry(148, 148, 30, 32, 1, true);
+const horizonMat = new THREE.MeshBasicMaterial({
+  color: 0xDDF5FF, transparent: true, opacity: 0.4,
+  side: THREE.BackSide, depthWrite: false
+});
+const horizon = new THREE.Mesh(horizonGeo, horizonMat);
+horizon.position.y = -5;
+scene.add(horizon);
+
+// 구름
+function makeCloud(x, y, z) {
+  const group = new THREE.Group();
+  const cloudMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+  const centers = [[0,0,0],[1.2,0.3,0],[-1.2,0.3,0],[0,0.5,0.5],[0.8,-0.2,0.8]];
+  for (const [cx,cy,cz] of centers) {
+    const r = 1.5 + Math.random();
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 7, 5), cloudMat);
+    mesh.position.set(cx*2, cy*1.5, cz);
+    group.add(mesh);
+  }
+  group.position.set(x, y, z);
+  return group;
+}
+
+const clouds = [];
+const cloudPositions = [
+  [-15, 20, -30], [15, 22, -30], [-25, 18, -50], [25, 20, -50],
+  [-10, 25, -70], [18, 19, -70], [-20, 21, -90], [12, 24, -90],
+];
+for (const [x,y,z] of cloudPositions) {
+  const c = makeCloud(x,y,z);
+  scene.add(c);
+  clouds.push(c);
+}
+
+// ---- 펭귄 만들기 ----
+// 펭귄이 -Z 방향(앞쪽)을 바라보도록: 얼굴/배 Z 음수 방향
+function makePenguin() {
+  const group = new THREE.Group();
+
+  // 몸통 (파란 타원)
+  const bodyGeo = new THREE.SphereGeometry(0.55, 12, 10);
+  bodyGeo.scale(1, 1.3, 0.9);
+  const body = new THREE.Mesh(bodyGeo, matPenguinBody);
+  body.position.y = 0.72;
+  body.castShadow = true;
+  group.add(body);
+
+  // 흰 배 (앞쪽 = -Z)
+  const bellyGeo = new THREE.SphereGeometry(0.35, 10, 8);
+  bellyGeo.scale(1, 1.2, 0.5);
+  const belly = new THREE.Mesh(bellyGeo, matPenguinBelly);
+  belly.position.set(0, 0.72, -0.38);
+  group.add(belly);
+
+  // 머리
+  const headGeo = new THREE.SphereGeometry(0.38, 12, 10);
+  const head = new THREE.Mesh(headGeo, matPenguinBody);
+  head.position.set(0, 1.55, -0.05);
+  head.castShadow = true;
+  group.add(head);
+
+  // 흰 얼굴 (앞쪽 = -Z)
+  const faceGeo = new THREE.SphereGeometry(0.25, 10, 8);
+  faceGeo.scale(1, 0.9, 0.5);
+  const face = new THREE.Mesh(faceGeo, matPenguinBelly);
+  face.position.set(0, 1.52, -0.3);
+  group.add(face);
+
+  // 눈 (앞쪽 = -Z)
+  for (const side of [-1, 1]) {
+    const eyeGeo = new THREE.SphereGeometry(0.06, 6, 6);
+    const eye = new THREE.Mesh(eyeGeo, matPenguinEye);
+    eye.position.set(side * 0.12, 1.62, -0.52);
+    group.add(eye);
+  }
+
+  // 부리 (앞쪽 = -Z)
+  const beakGeo = new THREE.ConeGeometry(0.07, 0.18, 6);
+  const beak = new THREE.Mesh(beakGeo, matPenguinBeak);
+  beak.rotation.x = -Math.PI / 2;
+  beak.position.set(0, 1.48, -0.55);
+  group.add(beak);
+
+  // 날개 (양쪽)
+  for (const side of [-1, 1]) {
+    const wingGeo = new THREE.SphereGeometry(0.22, 8, 6);
+    wingGeo.scale(0.5, 1.2, 0.6);
+    const wing = new THREE.Mesh(wingGeo, matPenguinBody);
+    wing.position.set(side * 0.7, 0.85, -0.05);
+    wing.rotation.z = side * 0.3;
+    group.add(wing);
+  }
+
+  // 발 (주황)
+  for (const side of [-1, 1]) {
+    const footGeo = new THREE.SphereGeometry(0.15, 6, 4);
+    footGeo.scale(1.5, 0.4, 1.2);
+    const foot = new THREE.Mesh(footGeo, matPenguinFeet);
+    foot.position.set(side * 0.2, 0.08, -0.1);
+    group.add(foot);
+  }
+
+  return group;
+}
+
+const penguin = makePenguin();
+penguin.position.set(0, 0, 0);
+scene.add(penguin);
+
+// ---- 장애물 / 아이템 시스템 ----
+const LANE_X = [-2, 0, 2]; // 왼쪽, 중앙, 오른쪽 레인
+const obstacles = []; // {mesh, type, z, lane}
+const items = [];     // {mesh, type, z, lane}
+
+// 물고기 아이템
+function makeFish(color = 0xFFAA00) {
+  const group = new THREE.Group();
+  const bodyGeo = new THREE.SphereGeometry(0.25, 8, 6);
+  bodyGeo.scale(1.6, 1, 0.7);
+  group.add(new THREE.Mesh(bodyGeo, new THREE.MeshLambertMaterial({ color })));
+  // 꼬리
+  const tailGeo = new THREE.ConeGeometry(0.2, 0.4, 4);
+  const tail = new THREE.Mesh(tailGeo, new THREE.MeshLambertMaterial({ color }));
+  tail.rotation.z = Math.PI / 2;
+  tail.position.x = -0.45;
+  group.add(tail);
+  return group;
+}
+
+// 얼음 장애물
+function makeIceBlock() {
+  const geo = new THREE.BoxGeometry(1.2, 1.2, 0.8);
+  return new THREE.Mesh(geo, matIce);
+}
+
+// 나무 장애물
+function makeTree() {
+  const group = new THREE.Group();
+  const trunkGeo = new THREE.CylinderGeometry(0.15, 0.2, 1, 6);
+  group.add(new THREE.Mesh(trunkGeo, new THREE.MeshLambertMaterial({ color: 0x8B4513 })));
+  const leafGeo = new THREE.ConeGeometry(0.7, 2, 7);
+  const leaf = new THREE.Mesh(leafGeo, new THREE.MeshLambertMaterial({ color: 0x228B22 }));
+  leaf.position.y = 1.5;
+  group.add(leaf);
+  return group;
+}
+
+// ---- 게임 상태 ----
+let gameState = 'start'; // 'start', 'playing', 'dead', 'gameover'
+let dist = 0;
+let bestDist = parseInt(localStorage.getItem('best') || '0');
+let fishCount = parseInt(localStorage.getItem('fish') || '0');
+let hearts = 3;
+let speed = 8; // units per second
+let lane = 1; // 0,1,2
+let targetLaneX = LANE_X[1];
+let penguinY = 0; // jump height
+let velY = 0;
+let isJumping = false;
+let popupTimer = 0;
+let invincibleTimer = 0;
+let magnetTimer = 0;
+let rocketTimer = 0;
+let spawnTimer = 0;
+let wobbleT = 0;
+let waddleT = 0;
+
+// 총 물고기 (세션 내)
+let fishSession = 0;
+
+function updateUI() {
+  document.getElementById('distNum').textContent = Math.floor(dist) + 'm';
+  document.getElementById('bestNum').textContent = 'Best: ' + Math.floor(bestDist) + 'm';
+  document.getElementById('fishNum').textContent = fishCount;
+  const heartsEl = document.getElementById('hearts');
+  heartsEl.textContent = '❤️'.repeat(Math.max(0, hearts));
+}
+
+function showPopup(msg, duration = 1500) {
+  const el = document.getElementById('popup');
+  el.textContent = msg;
+  el.style.opacity = '1';
+  popupTimer = duration;
+}
+
+// ---- 입력 ----
+let touchStartX = 0, touchStartY = 0;
+
+// ---- 자이로 (DeviceOrientation) ----
+let gyroEnabled = false;
+let gyroBaseline = null;
+let gyroGamma = 0;        // 스무딩된 현재 기울기
+let gyroRaw = 0;
+
+function requestGyro() {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // iOS 13+: 사용자 제스처 필요 → 첫 탭에서 요청
+    const askOnce = () => {
+      DeviceOrientationEvent.requestPermission().then(state => {
+        if (state === 'granted') enableGyro();
+      }).catch(() => {});
+      document.removeEventListener('touchstart', askOnce);
+    };
+    document.addEventListener('touchstart', askOnce, { once: true });
+  } else {
+    enableGyro();
+  }
+}
+
+function enableGyro() {
+  window.addEventListener('deviceorientation', e => {
+    if (e.gamma === null) return;
+    // 처음 수신 시 기준값 설정
+    if (gyroBaseline === null) {
+      gyroBaseline = e.gamma;
+      gyroEnabled = true;
+    }
+    // 부드러운 스무딩 (low-pass filter)
+    gyroRaw = e.gamma - gyroBaseline;
+    gyroGamma += (gyroRaw - gyroGamma) * 0.25;
+  });
+}
+
+requestGyro();
+
+// 자이로 레인 이동 타이머
+let gyroLaneCooldown = 0;
+
+document.addEventListener('keydown', e => {
+  if (gameState !== 'playing') return;
+  if (e.key === 'ArrowLeft') moveLane(-1);
+  if (e.key === 'ArrowRight') moveLane(1);
+  if (e.key === 'ArrowUp' || e.key === ' ') doJump();
+  e.preventDefault();
+});
+
+canvas.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  // 자이로 기준 리셋 (게임 시작 시 현재 기울기를 0으로)
+  if (gyroBaseline !== null) {
+    // 터치로 기준 재조정 없음, 그냥 유지
+  }
+}, { passive: true });
+
+canvas.addEventListener('touchend', e => {
+  if (gameState !== 'playing') return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dy) > Math.abs(dx) && dy < -30) { doJump(); return; }
+  if (!gyroEnabled && Math.abs(dx) > 30) moveLane(dx > 0 ? 1 : -1);
+}, { passive: true });
+
+canvas.addEventListener('click', e => {
+  if (gameState === 'start') { startGame(); return; }
+  if (gameState !== 'playing') return;
+  if (gyroEnabled) {
+    // 자이로 모드: 탭 = 점프
+    doJump();
+  } else {
+    // 자이로 없을 때: 좌/우 탭 = 레인, 가운데 탭 = 점프
+    const third = window.innerWidth / 3;
+    if (e.clientX < third) moveLane(-1);
+    else if (e.clientX > third * 2) moveLane(1);
+    else doJump();
+  }
+});
+
+function moveLane(dir) {
+  const newLane = Math.max(0, Math.min(2, lane + dir));
+  if (newLane !== lane) {
+    lane = newLane;
+    targetLaneX = LANE_X[lane];
+  }
+}
+
+function doJump() {
+  if (!isJumping) {
+    isJumping = true;
+    velY = 7;
+    showPopup('🚀', 600);
+  }
+}
+
+// ---- 게임 시작 ----
+function startGame() {
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('gameover-screen').style.display = 'none';
+
+  dist = 0;
+  fishSession = 0;
+  hearts = 3;
+  speed = 8;
+  lane = 1;
+  targetLaneX = LANE_X[1];
+  penguinY = 0;
+  velY = 0;
+  isJumping = false;
+  invincibleTimer = 0;
+  magnetTimer = 0;
+  rocketTimer = 0;
+  spawnTimer = 0;
+  wobbleT = 0;
+  waddleT = 0;
+
+  // 장애물/아이템 제거
+  for (const o of obstacles) scene.remove(o.mesh);
+  for (const i of items) scene.remove(i.mesh);
+  obstacles.length = 0;
+  items.length = 0;
+
+  penguin.position.set(LANE_X[1], 0, 0);
+  gyroBaseline = null; // 게임 시작 시 현재 기울기를 새 기준으로
+  gyroLaneCooldown = 0;
+  gameState = 'playing';
+  updateUI();
+}
+
+// ---- 충돌 감지 ----
+function checkCollision(objX, objZ, objR = 0.5) {
+  const px = penguin.position.x;
+  const pz = penguin.position.z;
+  const dist2D = Math.sqrt((px - objX)**2 + (pz - objZ)**2);
+  return dist2D < objR + 0.55;
+}
+
+// ---- 스폰 ----
+function spawnObjects(dt) {
+  spawnTimer -= dt;
+  if (spawnTimer <= 0) {
+    spawnTimer = 0.8 + Math.random() * 1.5;
+
+    const spawnZ = -50;
+    const type = Math.random();
+
+    if (type < 0.4) {
+      // 물고기 아이템
+      const fishLanes = [0,1,2].sort(() => Math.random()-0.5).slice(0, 1+Math.floor(Math.random()*2));
+      for (const l of fishLanes) {
+        const colors = [0xFFAA00, 0xFF4400, 0x00AAFF, 0xFF00AA];
+        const mesh = makeFish(colors[Math.floor(Math.random()*colors.length)]);
+        mesh.position.set(LANE_X[l], 0.5, spawnZ - Math.random()*5);
+        scene.add(mesh);
+        items.push({ mesh, type:'fish', z: mesh.position.z, lane: l });
+      }
+    } else if (type < 0.75) {
+      // 장애물 (아이스 블록)
+      const lanes = [0,1,2].filter(() => Math.random() < 0.5);
+      if (lanes.length === 0) lanes.push(Math.floor(Math.random()*3));
+      for (const l of lanes) {
+        const mesh = makeIceBlock();
+        mesh.position.set(LANE_X[l], 0.6, spawnZ - Math.random()*5);
+        mesh.castShadow = true;
+        scene.add(mesh);
+        obstacles.push({ mesh, type:'ice', z: mesh.position.z, lane: l });
+      }
+    } else {
+      // 나무 장애물
+      const l = Math.floor(Math.random()*3);
+      const mesh = makeTree();
+      mesh.position.set(LANE_X[l] + (Math.random()-0.5)*0.5, 0, spawnZ);
+      mesh.castShadow = true;
+      scene.add(mesh);
+      obstacles.push({ mesh, type:'tree', z: mesh.position.z, lane: l });
+    }
+  }
+}
+
+// ---- Shop ----
+function openShop() {
+  if (gameState === 'playing') return;
+  document.getElementById('shop-overlay').style.display = 'flex';
+}
+function closeShop() {
+  document.getElementById('shop-overlay').style.display = 'none';
+}
+function buyHeart() {
+  if (fishCount >= 30 && hearts < 3) {
+    fishCount -= 30;
+    hearts = Math.min(3, hearts + 1);
+    localStorage.setItem('fish', fishCount);
+    updateUI(); showPopup('❤️ 하트 +1!');
+  } else showPopup(fishCount < 30 ? '🐟 부족!' : '하트 가득!');
+}
+function buyRocket() {
+  if (fishCount >= 50) {
+    fishCount -= 50; rocketTimer = 10;
+    localStorage.setItem('fish', fishCount);
+    updateUI(); showPopup('🚀 로켓!'); closeShop();
+  } else showPopup('🐟 부족!');
+}
+function buyMagnet() {
+  if (fishCount >= 40) {
+    fishCount -= 40; magnetTimer = 10;
+    localStorage.setItem('fish', fishCount);
+    updateUI(); showPopup('🧲 자석!'); closeShop();
+  } else showPopup('🐟 부족!');
+}
+
+// ---- 도로 스크롤: 설경 뱅크/얼음기둥도 같이 이동 ----
+// 무한 도로 패턴: 오브젝트들은 Z+ 방향으로 이동
+// 카메라와 펭귄은 고정, 세계가 이동
+
+let clock = new THREE.Clock();
+
+// ---- 메인 루프 ----
+function loop() {
+  requestAnimationFrame(loop);
+
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if (gameState !== 'playing') {
+    renderer.render(scene, camera);
+    return;
+  }
+
+  // 자이로 레인 이동
+  if (gyroEnabled && gyroLaneCooldown <= 0) {
+    if (gyroGamma < -12) { moveLane(-1); gyroLaneCooldown = 0.35; }
+    else if (gyroGamma > 12) { moveLane(1); gyroLaneCooldown = 0.35; }
+  }
+  if (gyroLaneCooldown > 0) gyroLaneCooldown -= dt;
+
+  // 속도 증가
+  speed = 8 + dist * 0.005;
+  if (rocketTimer > 0) { rocketTimer -= dt; speed *= 2; }
+
+  dist += speed * dt;
+  if (dist > bestDist) {
+    bestDist = dist;
+    localStorage.setItem('best', Math.floor(bestDist));
+  }
+
+  // 펭귄 X 이동 (레인 전환)
+  penguin.position.x += (targetLaneX - penguin.position.x) * Math.min(1, dt * 10);
+
+  // 점프 물리
+  if (isJumping) {
+    velY -= 18 * dt;
+    penguinY += velY * dt;
+    if (penguinY <= 0) { penguinY = 0; velY = 0; isJumping = false; }
+  }
+  penguin.position.y = penguinY;
+
+  // 펭귄 흔들림 (뒤뚱뒤뚱)
+  waddleT += dt * speed * 2;
+  wobbleT += dt * 4;
+  penguin.rotation.z = Math.sin(waddleT) * 0.12;
+  // 날갯짓
+  const wings = penguin.children.filter((_,i) => i === 6 || i === 7);
+  if (wings.length) {
+    wings.forEach((w, i) => {
+      w.rotation.z = (i === 0 ? 1 : -1) * (0.3 + Math.sin(waddleT * 2) * 0.3);
+    });
+  }
+
+  // 카메라 추적: 펭귄 X 기준으로 살짝만 따라가기 (너무 많이 움직이면 어색)
+  const camTargetX = penguin.position.x * 0.25;
+  camera.position.x += (camTargetX - camera.position.x) * dt * 4;
+  camera.lookAt(penguin.position.x * 0.4, 1.2, -15);
+
+  // 자석: 물고기 자동 당기기
+  if (magnetTimer > 0) magnetTimer -= dt;
+
+  // 타이머
+  if (invincibleTimer > 0) invincibleTimer -= dt;
+  if (popupTimer > 0) {
+    popupTimer -= dt * 1000;
+    if (popupTimer <= 0) document.getElementById('popup').style.opacity = '0';
+  }
+
+  // 스폰
+  spawnObjects(dt);
+
+  // 오브젝트 이동 (세계가 카메라 쪽으로 다가옴)
+  const scrollZ = speed * dt;
+
+  // 장애물 이동 + 충돌
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const o = obstacles[i];
+    o.mesh.position.z += scrollZ;
+    // 회전 애니메이션
+    o.mesh.rotation.y += dt;
+
+    if (o.mesh.position.z > 5) {
+      scene.remove(o.mesh);
+      obstacles.splice(i, 1);
+      continue;
+    }
+
+    if (invincibleTimer <= 0 && o.mesh.position.z > -3 && o.mesh.position.z < 3) {
+      const hit = checkCollision(o.mesh.position.x, o.mesh.position.z, 0.6);
+      if (hit && penguinY < 0.8) {
+        hearts--;
+        invincibleTimer = 2;
+        showPopup('💥 앗!');
+        penguin.position.x = LANE_X[1]; targetLaneX = LANE_X[1]; lane = 1;
+        scene.remove(o.mesh);
+        obstacles.splice(i, 1);
+        if (hearts <= 0) {
+          gameState = 'gameover';
+          document.getElementById('gameover-screen').style.display = 'flex';
+          document.getElementById('go-score').textContent =
+            Math.floor(dist) + 'm | 물고기: ' + fishSession + '마리';
+          updateUI();
+        }
+      }
+    }
+  }
+
+  // 아이템 이동 + 획득
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    it.mesh.position.z += scrollZ;
+    it.mesh.rotation.y += dt * 2;
+    it.mesh.position.y = 0.5 + Math.sin(wobbleT + i) * 0.15;
+
+    if (it.mesh.position.z > 5) {
+      scene.remove(it.mesh);
+      items.splice(i, 1);
+      continue;
+    }
+
+    // 자석: 가까우면 당기기
+    if (magnetTimer > 0) {
+      const dx = penguin.position.x - it.mesh.position.x;
+      const dz = penguin.position.z - it.mesh.position.z;
+      const d = Math.sqrt(dx*dx + dz*dz);
+      if (d < 5) {
+        it.mesh.position.x += dx/d * speed * 0.5 * dt;
+        it.mesh.position.z += dz/d * speed * 0.5 * dt;
+      }
+    }
+
+    if (it.mesh.position.z > -2 && it.mesh.position.z < 2) {
+      const hit = checkCollision(it.mesh.position.x, it.mesh.position.z, 0.5);
+      if (hit) {
+        fishCount++; fishSession++;
+        localStorage.setItem('fish', fishCount);
+        scene.remove(it.mesh);
+        items.splice(i, 1);
+        showPopup('🐟 +1', 600);
+      }
+    }
+  }
+
+  // 배경 오브젝트 스크롤 (눈 뱅크, 얼음기둥, 구름)
+  // 눈 뱅크: 자식들 이동 + 루프
+  for (const bank of [leftBanks, rightBanks]) {
+    for (const child of bank.children) {
+      child.position.z += scrollZ;
+      if (child.position.z > 15) child.position.z -= 120;
+    }
+  }
+
+  for (const child of icePillars.children) {
+    child.position.z += scrollZ * 0.7;
+    if (child.position.z > 15) child.position.z -= 100;
+  }
+
+  for (const c of clouds) {
+    c.position.z += scrollZ * 0.2;
+    if (c.position.z > 20) c.position.z -= 120;
+  }
+
+  // 무적 깜빡임
+  if (invincibleTimer > 0) {
+    penguin.visible = Math.floor(invincibleTimer * 8) % 2 === 0;
+  } else {
+    penguin.visible = true;
+  }
+
+  updateUI();
+  renderer.render(scene, camera);
+}
+
+// ---- 초기화 ----
+updateUI();
+loop();
+</script>
+</body>
+</html>
