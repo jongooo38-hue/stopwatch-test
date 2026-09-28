@@ -7,7 +7,7 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
-canvas { display: block; touch-action: none; }
+canvas { display: block; touch-action: none; width: 100%; height: 100%; position: fixed; top: 0; left: 0; }
 #ui {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
@@ -247,10 +247,10 @@ function update(){
   const obsGap=Math.max(60,200-dist*0.4);if(t-lastObs>obsGap){spawnObstacle();lastObs=t;}
   const itemGap=Math.max(40,120-dist*0.2);if(t-lastItem>itemGap){spawnItem();lastItem=t;}
   for(const ob of obstacles){ob.y-=speed*0.4+0.5;ob.T+=0.04;}
-  for(const it of items){it.y-=speed*0.4+0.2;it.fishT+=0.07;it.vy*=0.96;it.y+=it.vy;}
+  for(const it of items){it.y-=speed*0.4+0.2;it.fishT+=0.07;it.vy*=0.96;it.y+=it.vy;if(it.y<HORIZON+it.s)it.y=HORIZON+it.s;}
   if(flashTimer>0)flashTimer--;
   checkCollisions();updateParticles();
-  obstacles=obstacles.filter(o=>!o.cleared&&o.y>-200);items=items.filter(i=>!i.collected&&i.y>-50);
+  obstacles=obstacles.filter(o=>!o.cleared&&o.y>-200);items=items.filter(i=>!i.collected&&i.y>HORIZON-20);
   updateUI();
 }
 function render(){
