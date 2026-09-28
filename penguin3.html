@@ -114,7 +114,7 @@ const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
 let W,H,RY,ROAD_LEFT,ROAD_RIGHT,HORIZON;
 function resize(){
   W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;
-  RY=H*0.62;HORIZON=H*0.38;ROAD_LEFT=W*0.08;ROAD_RIGHT=W*0.92;
+  RY=H*0.62;HORIZON=H*0.38;ROAD_LEFT=W*0.34;ROAD_RIGHT=W*0.66;
 }
 resize();window.addEventListener('resize',resize);
 const UP={hp:parseInt(localStorage.getItem('up_hp')||'0'),jump:parseInt(localStorage.getItem('up_jump')||'0'),magnet:parseInt(localStorage.getItem('up_magnet')||'0'),fish:parseInt(localStorage.getItem('up_fish')||'0')};
@@ -191,25 +191,32 @@ function drawGround(){
   sg.addColorStop(0,'#CFE8F5');sg.addColorStop(0.5,'#B4D6EC');sg.addColorStop(1,'#9AC6E0');
   ctx.fillStyle=sg;ctx.fillRect(0,HORIZON,W,H-HORIZON);
 }
-// 도로 가장자리: 지평선에서 W/2(한 점), RY에서 ROAD_LEFT/RIGHT(넓게), 아래로 계속 벌어짐
-function pEdgeL(y){const t=(y-HORIZON)/(RY-HORIZON);return W/2+(ROAD_LEFT-W/2)*t;}
-function pEdgeR(y){const t=(y-HORIZON)/(RY-HORIZON);return W/2+(ROAD_RIGHT-W/2)*t;}
+// 도로 반폭: 지평선에서 아주 좁게, RY에서 ROAD_LEFT/RIGHT 폭, 아래로 완만히 벌어짐
+function pHW(y){const tR=(RY-HORIZON)/(H-HORIZON),t=(y-HORIZON)/(H-HORIZON),hwTop=W*0.012,hwRY=(ROAD_RIGHT-ROAD_LEFT)/2;return hwTop+(hwRY-hwTop)*(t/tR);}
+function pEdgeL(y){return W/2-pHW(y);}
+function pEdgeR(y){return W/2+pHW(y);}
 // 얼음길: 멀리(지평선)는 좁고 가까이(펭귄)는 넓은 정상 원근
 function drawIcePath(){
   const N=26;
   for(let i=0;i<N;i++){
     const y1=HORIZON+(H-HORIZON)*i/N,y2=HORIZON+(H-HORIZON)*(i+1)/N,f=i/N;
-    const r=Math.round(150+f*98),g=Math.round(206+f*44),b=Math.round(232+f*20);
+    const r=Math.round(158+f*92),g=Math.round(210+f*42),b=Math.round(234+f*18);
     ctx.fillStyle=`rgb(${r},${g},${b})`;
     ctx.beginPath();ctx.moveTo(pEdgeL(y1),y1);ctx.lineTo(pEdgeR(y1),y1);ctx.lineTo(pEdgeR(y2),y2);ctx.lineTo(pEdgeL(y2),y2);ctx.closePath();ctx.fill();
   }
   // 도로 가장자리 선
-  ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=2;
+  ctx.strokeStyle='rgba(255,255,255,0.55)';ctx.lineWidth=2;
   ctx.beginPath();ctx.moveTo(pEdgeL(HORIZON),HORIZON);ctx.lineTo(pEdgeL(H),H);ctx.stroke();
   ctx.beginPath();ctx.moveTo(pEdgeR(HORIZON),HORIZON);ctx.lineTo(pEdgeR(H),H);ctx.stroke();
-  // 원근 가로선(멀수록 촘촘)
-  ctx.strokeStyle='rgba(150,210,240,0.22)';
-  for(let i=1;i<12;i++){const fr=i/12,yL=HORIZON+(H-HORIZON)*fr*fr;ctx.lineWidth=0.5+fr*1.2;ctx.beginPath();ctx.moveTo(pEdgeL(yL),yL);ctx.lineTo(pEdgeR(yL),yL);ctx.stroke();}
+  // 흐르는 가로선: 지평선에서 생겨 펭귄쪽으로 다가온다
+  drawIcePath.s=((drawIcePath.s||0)+(speed||0)*0.006)%1;
+  ctx.strokeStyle='rgba(150,205,235,0.35)';
+  for(let k=0;k<9;k++){
+    const p=((k/9)+drawIcePath.s)%1,yL=HORIZON+(H-HORIZON)*p*p;
+    ctx.lineWidth=0.5+p*2.2;ctx.globalAlpha=Math.min(1,p*1.6);
+    ctx.beginPath();ctx.moveTo(pEdgeL(yL),yL);ctx.lineTo(pEdgeR(yL),yL);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
   // 얼음 밑 물고기 그림자
   for(const sf of SUB_FISH){sf.x+=sf.spd;if(sf.x>1.15)sf.x=-0.15;sf.ph+=0.04;const sy=RY-12+Math.sin(sf.ph)*4,sx=pEdgeL(sy)+(pEdgeR(sy)-pEdgeL(sy))*Math.max(0,Math.min(1,sf.x)),sz=sf.sz*W*(0.4+sf.depth*0.6);ctx.save();ctx.globalAlpha=0.06+sf.depth*0.07;ctx.fillStyle='#88DDFF';ctx.beginPath();ctx.ellipse(sx,sy,sz,sz*0.35,0,0,Math.PI*2);ctx.fill();ctx.restore();}
 }
