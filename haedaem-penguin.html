@@ -6,7 +6,7 @@
 <title>해담펭귄</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #020A1E; }
 canvas { display: block; touch-action: none; width: 100%; height: 100%; position: fixed; top: 0; left: 0; }
 #ui {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -186,56 +186,33 @@ function drawSea(){const sg=ctx.createLinearGradient(0,HORIZON,0,RY);sg.addColor
 function drawSnowflakes(){ctx.fillStyle='#FFFFFF';for(const sf of SNOWFLAKES){sf.wb+=sf.wbs;sf.x+=sf.vx+Math.sin(sf.wb)*0.3+tiltSmooth*0.5;sf.y+=sf.vy;if(sf.y>H){sf.y=-5;sf.x=Math.random()*W;}if(sf.x>W+5)sf.x=-5;if(sf.x<-5)sf.x=W+5;ctx.globalAlpha=sf.alpha*0.8;ctx.beginPath();ctx.arc(sf.x,sf.y,sf.r,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;}
 function drawIceRoad(){for(let i=0;i<18;i++){const t1=i/18,t2=(i+1)/18,y1=HORIZON+(RY-HORIZON)*t1,y2=HORIZON+(RY-HORIZON)*t2,xl1=ROAD_LEFT+(W/2-ROAD_LEFT)*t1,xr1=W-xl1,xl2=ROAD_LEFT+(W/2-ROAD_LEFT)*t2,xr2=W-xl2,f=i/18;ctx.fillStyle=`rgb(${Math.round(120+f*80)},${Math.round(190+f*50)},${Math.round(220+f*25)})`;ctx.beginPath();ctx.moveTo(xl1,y1);ctx.lineTo(xr1,y1);ctx.lineTo(xr2,y2);ctx.lineTo(xl2,y2);ctx.closePath();ctx.fill();}const specG=ctx.createLinearGradient(W/2-80,RY,W/2+80,RY);specG.addColorStop(0,'rgba(255,255,255,0)');specG.addColorStop(0.5,'rgba(255,255,255,0.18)');specG.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=specG;ctx.beginPath();ctx.moveTo(W/2-2,HORIZON);ctx.lineTo(W/2+2,HORIZON);ctx.lineTo(W/2+120,RY);ctx.lineTo(W/2-120,RY);ctx.closePath();ctx.fill();ctx.strokeStyle='rgba(150,210,240,0.22)';for(let i=1;i<14;i++){const frac=i/14,yLine=HORIZON+(RY-HORIZON)*frac,xL=ROAD_LEFT+(W/2-ROAD_LEFT)*frac,xR=W-xL;ctx.lineWidth=0.5+frac*0.6;ctx.beginPath();ctx.moveTo(xL,yLine);ctx.lineTo(xR,yLine);ctx.stroke();}ctx.setLineDash([12,14]);ctx.strokeStyle='rgba(180,230,250,0.18)';ctx.lineWidth=0.8;for(let lane=-2;lane<=2;lane++){if(lane===0)continue;ctx.beginPath();ctx.moveTo(W/2+lane*(W*0.06),HORIZON+2);ctx.lineTo(W/2+lane*(W*0.35),RY);ctx.stroke();}ctx.setLineDash([]);for(const sf of SUB_FISH){sf.x+=sf.spd;if(sf.x>1.15)sf.x=-0.15;sf.ph+=0.04;const sx=sf.x*W,sy=RY-14+Math.sin(sf.ph)*4,sz=sf.sz*W*(0.4+sf.depth*0.6);ctx.save();ctx.globalAlpha=0.06+sf.depth*0.07;ctx.fillStyle='#88DDFF';if(sf.flip)ctx.scale(-1,1);const bx=sf.flip?-sx:sx;ctx.beginPath();ctx.ellipse(bx,sy,sz,sz*0.35,Math.sin(sf.ph*0.3)*0.1,0,Math.PI*2);ctx.fill();ctx.restore();}ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(W/2,HORIZON);ctx.lineTo(ROAD_LEFT,RY);ctx.stroke();ctx.beginPath();ctx.moveTo(W/2,HORIZON);ctx.lineTo(ROAD_RIGHT,RY);ctx.stroke();}
 function drawIceCliffs(){
-  // 왼쪽 빙하 절벽: 화면 왼쪽 가장자리 ~ 도로 왼쪽 경계
-  // 도로 왼쪽 경계선: 소실점(W/2, HORIZON) → (ROAD_LEFT, RY)
-  // 절벽은 그 왼쪽 영역만 채움
+  // 도로 왼쪽 경계: (W/2,HORIZON)→(ROAD_LEFT,RY)
+  // 도로 오른쪽 경계: (W/2,HORIZON)→(ROAD_RIGHT,RY)
+  // 절벽 = 화면 가장자리 ~ 도로 경계선 사이 삼각형
   ctx.save();
-  const hy=HORIZON,ry=RY;
-  // 왼쪽
+  const hy=HORIZON,ry=RY,vx=W/2;
+
+  // 왼쪽 절벽: (0,hy) (vx,hy) (ROAD_LEFT,ry) (0,ry)
   const lg=ctx.createLinearGradient(0,hy,ROAD_LEFT,ry);
-  lg.addColorStop(0,'#A8D8F0');lg.addColorStop(0.5,'#C4E8F8');lg.addColorStop(1,'#8EC8E8');
+  lg.addColorStop(0,'#B8DCED');lg.addColorStop(1,'#7AB4D0');
   ctx.fillStyle=lg;
   ctx.beginPath();
-  ctx.moveTo(0,hy);          // 왼쪽 상단
-  ctx.lineTo(W/2,hy);        // 소실점 (수평선)
-  ctx.lineTo(ROAD_LEFT,ry);  // 도로 왼쪽 하단 끝
-  ctx.lineTo(0,ry);          // 왼쪽 하단
+  ctx.moveTo(0,hy);ctx.lineTo(vx,hy);ctx.lineTo(ROAD_LEFT,ry);ctx.lineTo(0,ry);
   ctx.closePath();ctx.fill();
-  // 왼쪽 절벽 엣지 하이라이트 (도로 경계선 왼쪽)
-  ctx.fillStyle='rgba(220,245,255,0.4)';
-  ctx.beginPath();
-  ctx.moveTo(W/2,hy);ctx.lineTo(ROAD_LEFT,ry);ctx.lineTo(ROAD_LEFT-10,ry);ctx.lineTo(W/2-6,hy);
-  ctx.closePath();ctx.fill();
-  // 크랙
-  ctx.strokeStyle='rgba(100,170,215,0.35)';ctx.lineWidth=1;
-  for(let i=0;i<4;i++){
-    const fy=0.25+i*0.18;
-    const ex=ROAD_LEFT+(W/2-ROAD_LEFT)*(1-fy)-(20+i*15);
-    const ey=hy+(ry-hy)*fy;
-    ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-15,ey+20);ctx.stroke();
-  }
+  // 엣지 하이라이트
+  ctx.fillStyle='rgba(230,248,255,0.3)';
+  ctx.beginPath();ctx.moveTo(vx,hy);ctx.lineTo(vx-4,hy);ctx.lineTo(ROAD_LEFT-6,ry);ctx.lineTo(ROAD_LEFT,ry);ctx.closePath();ctx.fill();
 
-  // 오른쪽
+  // 오른쪽 절벽: (W,hy) (vx,hy) (ROAD_RIGHT,ry) (W,ry)
   const rg=ctx.createLinearGradient(W,hy,ROAD_RIGHT,ry);
-  rg.addColorStop(0,'#90C8E4');rg.addColorStop(0.5,'#B8DFF4');rg.addColorStop(1,'#7AB8DC');
+  rg.addColorStop(0,'#A8D0E8');rg.addColorStop(1,'#6AA8C8');
   ctx.fillStyle=rg;
   ctx.beginPath();
-  ctx.moveTo(W,hy);           // 오른쪽 상단
-  ctx.lineTo(W/2,hy);         // 소실점
-  ctx.lineTo(ROAD_RIGHT,ry);  // 도로 오른쪽 하단 끝
-  ctx.lineTo(W,ry);           // 오른쪽 하단
+  ctx.moveTo(W,hy);ctx.lineTo(vx,hy);ctx.lineTo(ROAD_RIGHT,ry);ctx.lineTo(W,ry);
   ctx.closePath();ctx.fill();
-  ctx.fillStyle='rgba(220,245,255,0.4)';
-  ctx.beginPath();
-  ctx.moveTo(W/2,hy);ctx.lineTo(ROAD_RIGHT,ry);ctx.lineTo(ROAD_RIGHT+10,ry);ctx.lineTo(W/2+6,hy);
-  ctx.closePath();ctx.fill();
-  ctx.strokeStyle='rgba(100,170,215,0.35)';ctx.lineWidth=1;
-  for(let i=0;i<4;i++){
-    const fy=0.25+i*0.18;
-    const ex=ROAD_RIGHT+(W/2-ROAD_RIGHT)*(1-fy)+(20+i*15);
-    const ey=hy+(ry-hy)*fy;
-    ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex+15,ey+20);ctx.stroke();
-  }
+  ctx.fillStyle='rgba(230,248,255,0.3)';
+  ctx.beginPath();ctx.moveTo(vx,hy);ctx.lineTo(vx+4,hy);ctx.lineTo(ROAD_RIGHT+6,ry);ctx.lineTo(ROAD_RIGHT,ry);ctx.closePath();ctx.fill();
+
   ctx.restore();
 }
 function drawHorizonGlow(){const hg=ctx.createLinearGradient(0,HORIZON-20,0,HORIZON+40);hg.addColorStop(0,'rgba(40,160,220,0)');hg.addColorStop(0.5,'rgba(80,200,240,0.12)');hg.addColorStop(1,'rgba(40,160,220,0)');ctx.fillStyle=hg;ctx.fillRect(0,HORIZON-20,W,60);}
@@ -326,8 +303,8 @@ function update(){
   if(pY>=RY-40){pY=RY-40;if(pVY>2&&!onGround){squashY=1.28;squashX=0.78;squashTimer=10;}pVY=0;onGround=true;}else onGround=false;
   const obsGap=Math.max(60,200-dist*0.4);if(t-lastObs>obsGap){spawnObstacle();lastObs=t;}
   const itemGap=Math.max(40,120-dist*0.2);if(t-lastItem>itemGap){spawnItem();lastItem=t;}
-  for(const ob of obstacles){ob.y-=speed*0.4+0.5;ob.T+=0.04;}
-  for(const it of items){it.y-=speed*0.4+0.2;it.fishT+=0.07;it.vy*=0.96;it.y+=it.vy;const minY=it.airborn?HORIZON+it.s*3:HORIZON+it.s;if(it.y<minY)it.y=minY;}
+  for(const ob of obstacles){ob.y-=speed*0.4+0.5;ob.T+=0.04;if(ob.y<HORIZON)ob.cleared=true;}
+  for(const it of items){it.y-=speed*0.4+0.2;it.fishT+=0.07;it.vy*=0.96;it.y+=it.vy;const minY=HORIZON+(RY-HORIZON)*0.15;if(it.y<minY)it.y=minY;}
   if(flashTimer>0)flashTimer--;
   checkCollisions();updateParticles();
   obstacles=obstacles.filter(o=>!o.cleared&&o.y>-200);items=items.filter(i=>!i.collected&&i.y>HORIZON-20);
